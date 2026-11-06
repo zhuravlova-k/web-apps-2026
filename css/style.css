@@ -40,3 +40,28 @@ footer {
     margin-top: 2rem;
     border-top: 1px solid #ccc;
 }
+
+main {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 15px;
+}
+
+section {
+    margin-bottom: 2.5rem;
+}
+
+#filters {
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#category-filter {
+    padding: 6px 10px;
+    font-size: 1rem;
+    margin-left: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
