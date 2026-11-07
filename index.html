@@ -23,12 +23,18 @@
         <main>
             <section id="filters">
                 <h2>Фільтр за датою/категорією</h2>
-                <label for="category-filter">Оберіть категорію:</label>
-                <select id="category-filter" name="category">
-                    <option value="music">Музика</option>
-                    <option value="art">Мистецтво</option>
-                    <option value="theater">Театр</option>
-                </select>
+                <div class="filter-controls">
+                    <label for="date-filter">Дата:</label>
+                    <input type="date" id="date-filter" name="date">
+
+                    <label for="category-filter">Категорія:</label>
+                    <select id="category-filter" name="category">
+                        <option value="all">Усі</option>
+                        <option value="music">Музика</option>
+                        <option value="art">Мистецтво</option>
+                        <option value="theater">Театр</option>
+                    </select>
+                </div>
             </section>
 
             <section id="events">

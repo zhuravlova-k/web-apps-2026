@@ -39,7 +39,7 @@ img {
 
 .header-inner nav {
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     align-items: center;
     flex-wrap: wrap; 
     gap: 12px;
@@ -72,10 +72,16 @@ img {
     margin-bottom: 2rem;
 }
 
-#category-filter {
+.filter-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filter-controls input, 
+.filter-controls select {
     padding: 6px 10px;
     font-size: 1rem;
-    margin-left: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
@@ -127,34 +133,45 @@ footer {
 }
 
 @media (min-width: 600px) {
-    .cards {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .layout-wrapper, .header-inner {
+    .layout-wrapper {
         padding: 0 30px;
     }
+    
     .header-inner {
-        padding-top: 1.5rem;
-        padding-bottom: 1.5rem;
+        padding: 1.5rem 30px;
+    }
+
+    .header-inner nav {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .filter-controls {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .cards {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
 @media (min-width: 1024px) {
-    .layout-wrapper, .header-inner {
+    .layout-wrapper {
         max-width: 1400px;
         padding: 0 40px; 
+        gap: 32px; 
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        align-items: start;
     }
     
-    .layout-wrapper {
-        gap: 32px; 
-    }
-
     .header-inner {
+        max-width: 1400px;
+        padding: 2rem 40px;
         flex-direction: row;
         justify-content: space-between;
-        padding-top: 2rem;
-        padding-bottom: 2rem;
     }
     
     .header-inner h1 {
@@ -162,16 +179,9 @@ footer {
     }
     
     .header-inner nav {
-        flex-direction: row;
         gap: 24px;
     }
     
-    .layout-wrapper {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        align-items: start;
-    }
-
     .cards {
         grid-template-columns: repeat(3, 1fr);
     }
