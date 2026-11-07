@@ -5,9 +5,10 @@
 body {
     margin: 0;
     font-family: system-ui, -apple-system, sans-serif;
+    font-size: 16px;
     line-height: 1.6;
-    color: #333;
-    background-color: #f4f4f9;
+    color: #1a1a1a;
+    background-color: #fbf9f6;
 }
 
 img {
@@ -15,8 +16,26 @@ img {
     height: auto;
 }
 
+h1 {
+    font-size: 32px;
+    margin: 0;
+}
+
+h2 {
+    font-size: 24px;
+    margin-top: 0;
+    color: #370617;
+}
+
+h3 {
+    font-size: 20px;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    color: #03071e;
+}
+
 .site-header {
-    background-color: #1a1a1a; 
+    background-color: #6a040f; 
 }
 
 .header-inner {
@@ -31,8 +50,6 @@ img {
 }
 
 .header-inner h1 {
-    margin: 0;
-    font-size: 1.8rem;
     color: #ffffff; 
     text-align: center;
 }
@@ -49,10 +66,12 @@ img {
     color: #f1c40f; 
     text-decoration: none;
     font-weight: bold;
+    font-size: 18px;
 }
 
 .header-inner nav a:hover {
     text-decoration: underline;
+    color: #fff;
 }
 
 .layout-wrapper {
@@ -70,6 +89,7 @@ img {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     margin-bottom: 2rem;
+    border-top: 4px solid #6a040f;
 }
 
 .filter-controls {
@@ -80,8 +100,8 @@ img {
 
 .filter-controls input, 
 .filter-controls select {
-    padding: 6px 10px;
-    font-size: 1rem;
+    padding: 8px 12px;
+    font-size: 16px;
     border: 1px solid #ccc;
     border-radius: 4px;
 }
@@ -94,42 +114,57 @@ img {
 
 article {
     background-color: #ffffff;
-    padding: 16px; 
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 20px; 
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
-.category-music { border-left: 4px solid #3498db; }
-.category-art { border-left: 4px solid #e74c3c; }
-.category-theater { border-left: 4px solid #9b59b6; }
-
-article h3 {
-    margin-top: 0;
-    color: #2c3e50;
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
 }
 
-article p {
-    margin-bottom: 0;
+.badge-music {
+    background-color: #023e8a;
+}
+
+.badge-art {
+    background-color: #d00000;
+}
+
+.badge-theater {
+    background-color: #6a040f;
+}
+
+.event-date {
+    font-size: 18px;
+    font-weight: 700;
+    color: #9d0208;
+    margin: 4px 0 0 0;
 }
 
 aside {
-    background-color: #e9ecef;
+    background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
-    border: 1px solid #ced4da;
-}
-
-aside h2 {
-    margin-top: 0;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
 }
 
 footer {
     text-align: center;
-    padding: 1.5rem;
-    background-color: #e0e0e0;
-    color: #555;
+    padding: 2rem;
+    background-color: #370617;
+    color: #f1c40f;
     margin-top: 2rem;
-    border-top: 1px solid #ccc;
+    font-size: 16px;
 }
 
 @media (min-width: 600px) {
@@ -169,13 +204,13 @@ footer {
     
     .header-inner {
         max-width: 1400px;
-        padding: 2rem 40px;
+        padding: 2.5rem 40px;
         flex-direction: row;
         justify-content: space-between;
     }
     
     .header-inner h1 {
-        font-size: 2.5rem;
+        font-size: 36px;
     }
     
     .header-inner nav {
