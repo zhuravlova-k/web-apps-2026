@@ -17,44 +17,51 @@ img {
 
 .site-header {
     background-color: #1a1a1a; 
-    padding: 1.5rem 2rem;
+}
+
+.header-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem 15px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex-wrap: wrap; 
     gap: 16px;
 }
 
-.site-header h1 {
+.header-inner h1 {
     margin: 0;
-    font-size: 2.5rem;
+    font-size: 1.8rem;
     color: #ffffff; 
     text-align: center;
 }
 
-.site-header nav {
+.header-inner nav {
     display: flex;
-    flex-direction: column;
+    flex-direction: column; 
     align-items: center;
+    flex-wrap: wrap; 
     gap: 12px;
 }
 
-.site-header nav a {
+.header-inner nav a {
     color: #f1c40f; 
     text-decoration: none;
     font-weight: bold;
 }
 
-.site-header nav a:hover {
+.header-inner nav a:hover {
     text-decoration: underline;
 }
 
 .layout-wrapper {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 2rem auto;
     padding: 0 15px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 16px;
 }
 
 #filters {
@@ -124,18 +131,39 @@ footer {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .site-header nav {
-        flex-direction: row;
-        justify-content: center;
-        gap: 20px;
+    .layout-wrapper, .header-inner {
+        padding: 0 30px;
+    }
+    .header-inner {
+        padding-top: 1.5rem;
+        padding-bottom: 1.5rem;
     }
 }
 
 @media (min-width: 1024px) {
-    .site-header {
+    .layout-wrapper, .header-inner {
+        max-width: 1400px;
+        padding: 0 40px; 
+    }
+    
+    .layout-wrapper {
+        gap: 32px; 
+    }
+
+    .header-inner {
         flex-direction: row;
         justify-content: space-between;
-        flex-wrap: wrap;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    .header-inner h1 {
+        font-size: 2.5rem;
+    }
+    
+    .header-inner nav {
+        flex-direction: row;
+        gap: 24px;
     }
     
     .layout-wrapper {
