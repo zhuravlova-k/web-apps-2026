@@ -9,7 +9,7 @@
 </head>
 
 <body>
-    <header>
+    <header class="site-header">
         <h1>Афіша подій міста</h1>
         <nav>
             <a href="#events">Події</a>
@@ -17,35 +17,44 @@
         </nav>
     </header>
 
-    <main>
-        <section id="filters">
-            <h2>Фільтр за датою/категорією</h2>
-            <label for="category-filter">Оберіть категорію:</label>
-            <select id="category-filter" name="category">
-                <option value="music">Музика</option>
-                <option value="art">Мистецтво</option>
-                <option value="theater">Театр</option>
-            </select>
-        </section>
+    <div class="layout-wrapper">
+        <main>
+            <section id="filters">
+                <h2>Фільтр за датою/категорією</h2>
+                <label for="category-filter">Оберіть категорію:</label>
+                <select id="category-filter" name="category">
+                    <option value="music">Музика</option>
+                    <option value="art">Мистецтво</option>
+                    <option value="theater">Театр</option>
+                </select>
+            </section>
 
-        <section id="events">
-            <h2>Події</h2>
-            <article class="category-music">
-                <h3>Симфонічний концерт просто неба</h3>
-                <p>28 травня, 19:00</p>
-            </article>
+            <section id="events">
+                <h2>Події</h2>
+                <div class="cards">
+                    <article class="category-music">
+                        <h3>Симфонічний концерт просто неба</h3>
+                        <p>28 травня, 19:00</p>
+                    </article>
 
-            <article class="category-art">
-                <h3>Виставка сучасного мистецтва</h3>
-                <p>30 травня, 12:00</p>
-            </article>
-        </section>
-    </main>
+                    <article class="category-art">
+                        <h3>Виставка сучасного мистецтва</h3>
+                        <p>30 травня, 12:00</p>
+                    </article>
+                    
+                    <article class="category-theater">
+                        <h3>Театральна вистава "Тіні"</h3>
+                        <p>1 червня, 18:30</p>
+                    </article>
+                </div>
+            </section>
+        </main>
 
-    <aside id="selected-event">
-        <h2>Деталі обраної події</h2>
-        <p>Натисніть на подію, щоб побачити деталі.</p>
-    </aside>
+        <aside id="selected-event">
+            <h2>Деталі обраної події</h2>
+            <p>Натисніть на подію, щоб побачити деталі.</p>
+        </aside>
+    </div>
 
     <footer>
         <p>Контакти організаторів: info@city-events.ua</p>
