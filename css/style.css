@@ -10,45 +10,51 @@ body {
     background-color: #f4f4f9;
 }
 
-header {
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+.site-header {
     background-color: #1a1a1a; 
     padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
 }
 
-header h1 {
-    margin: 0 0 10px 0;
+.site-header h1 {
+    margin: 0;
     font-size: 2.5rem;
     color: #ffffff; 
+    text-align: center;
 }
 
-header nav a {
+.site-header nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.site-header nav a {
     color: #f1c40f; 
     text-decoration: none;
     font-weight: bold;
-    margin-right: 20px;
 }
 
-header nav a:hover {
+.site-header nav a:hover {
     text-decoration: underline;
 }
 
-footer {
-    text-align: center;
-    padding: 1.5rem;
-    background-color: #e0e0e0;
-    color: #555;
-    margin-top: 2rem;
-    border-top: 1px solid #ccc;
-}
-
-main {
-    max-width: 900px;
+.layout-wrapper {
+    max-width: 1200px;
     margin: 2rem auto;
     padding: 0 15px;
-}
-
-section {
-    margin-bottom: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
 #filters {
@@ -56,6 +62,7 @@ section {
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
 }
 
 #category-filter {
@@ -66,21 +73,22 @@ section {
     border-radius: 4px;
 }
 
+.cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
 article {
     background-color: #ffffff;
     padding: 16px; 
-    margin-bottom: 10px; 
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-.category-music {
-    border-left: 4px solid #3498db; 
-}
-
-.category-art {
-    border-left: 4px solid #e74c3c; 
-}
+.category-music { border-left: 4px solid #3498db; }
+.category-art { border-left: 4px solid #e74c3c; }
+.category-theater { border-left: 4px solid #9b59b6; }
 
 article h3 {
     margin-top: 0;
@@ -92,10 +100,21 @@ article p {
 }
 
 aside {
-    max-width: 900px;
-    margin: 0 auto 2rem auto;
     background-color: #e9ecef;
     padding: 1.5rem;
     border-radius: 8px;
     border: 1px solid #ced4da;
+}
+
+aside h2 {
+    margin-top: 0;
+}
+
+footer {
+    text-align: center;
+    padding: 1.5rem;
+    background-color: #e0e0e0;
+    color: #555;
+    margin-top: 2rem;
+    border-top: 1px solid #ccc;
 }
