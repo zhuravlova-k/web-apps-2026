@@ -1,6 +1,6 @@
 console.log('script.js підключено');
 
-// масив об'єктів з даними подій (повністю узгоджено з розміткою HTML + 1 коротка подія для тесту)
+// масив об'єктів з даними подій (узгоджено з розміткою HTML + 1 коротка подія для тесту)
 const cityEvents = [
     { title: 'Симфонічний концерт просто неба', category: 'music' },
     { title: 'Виставка сучасного мистецтва', category: 'art' },
@@ -11,32 +11,39 @@ const cityEvents = [
 // стрілкова функція: обрізає текст до n символів і додає '…' (один символ) без зайвих пробілів
 const shorten = (text, n) => text.length > n ? text.slice(0, n).trimEnd() + '…' : text;
 
-// звичайна функція: перебирає масив подій циклом for...of та класифікує їх через if/else
-function processEvents(events) {
-    console.log('--- Аналіз усіх подій ---');
-    
+// звичайна функція: перебирає події циклом for...of; якщо передано targetCategory —
+// виводить лише події цієї категорії, інакше всі; класифікує через if/else і рахує події
+function processEvents(events, targetCategory) {
+    console.log(targetCategory ? `--- Події в категорії: ${targetCategory} ---` : '--- Усі події ---');
+    let count = 0;
+
     for (const event of events) {
-        const shortTitle = shorten(event.title, 20);
-        let message = '';
-        
-        if (event.category === 'music') {
-            message = 'Музична подія:';
-        } else if (event.category === 'art') {
-            message = 'Мистецька подія:';
-        } else if (event.category === 'theater') {
-            message = 'Театральна подія:';
-        } else {
-            message = 'Інша подія:';
+        if (!targetCategory || event.category === targetCategory) {
+            let message;
+            if (event.category === 'music') {
+                message = 'Музична подія:';
+            } else if (event.category === 'art') {
+                message = 'Мистецька подія:';
+            } else if (event.category === 'theater') {
+                message = 'Театральна подія:';
+            } else {
+                message = 'Інша подія:';
+            }
+            console.log(`${message} ${shorten(event.title, 20)}`);
+            count++;
         }
-        
-        console.log(`${message} ${shortTitle}`);
     }
+
+    console.log(`Знайдено подій: ${count}`);
 }
 
-// виклик основної функції для масиву
+// виклики: окрема категорія та всі події
+processEvents(cityEvents, 'music');
+processEvents(cityEvents, 'theater');
 processEvents(cityEvents);
 
-// окремі прямі виклики стрілкової функції для перевірки її логіки (Крок 7)
+// прямі виклики стрілкової функції (Крок 7)
 console.log('--- Перевірка функції shorten ---');
-console.log(shorten('Коротка назва', 20)); // текст коротший за 20 символів (гілка else)
-console.log(shorten('Ця назва занадто довга і має бути обрізана', 20)); // Текст довший за 20 символів
+console.log(shorten(cityEvents[0].title, 20));           // реальні дані, довший текст
+console.log(shorten(cityEvents[3].title, 20));           // реальні дані, короткий текст
+console.log(shorten('Ця назва занадто довга і має бути обрізана', 20));
