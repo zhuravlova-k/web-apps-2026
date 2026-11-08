@@ -1,4 +1,6 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
 }
 
@@ -35,7 +37,7 @@ h3 {
 }
 
 .site-header {
-    background-color: #6a040f; 
+    background-color: #6a040f;
 }
 
 .header-inner {
@@ -45,12 +47,12 @@ h3 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex-wrap: wrap; 
+    flex-wrap: wrap;
     gap: 16px;
 }
 
 .header-inner h1 {
-    color: #ffffff; 
+    color: #ffffff;
     text-align: center;
 }
 
@@ -58,12 +60,12 @@ h3 {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex-wrap: wrap; 
+    flex-wrap: wrap;
     gap: 12px;
 }
 
 .header-inner nav a {
-    color: #f1c40f; 
+    color: #f1c40f;
     text-decoration: none;
     font-weight: bold;
     font-size: 18px;
@@ -87,7 +89,7 @@ h3 {
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     margin-bottom: 2rem;
     border-top: 4px solid #6a040f;
 }
@@ -98,12 +100,18 @@ h3 {
     gap: 12px;
 }
 
-.filter-controls input, 
+.filter-controls input,
 .filter-controls select {
     padding: 8px 12px;
     font-size: 16px;
     border: 1px solid #ccc;
     border-radius: 4px;
+}
+
+#events-count {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #6a040f;
 }
 
 .cards {
@@ -114,12 +122,24 @@ h3 {
 
 article {
     background-color: #ffffff;
-    padding: 20px; 
+    padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+}
+
+.event-card-music {
+    border-left: 4px solid #023e8a;
+}
+
+.event-card-art {
+    border-left: 4px solid #d00000;
+}
+
+.event-card-theater {
+    border-left: 4px solid #6a040f;
 }
 
 .badge {
@@ -129,6 +149,10 @@ article {
     font-size: 14px;
     font-weight: 600;
     color: #ffffff;
+}
+
+.cards article p.badge {
+    margin: 0;
 }
 
 .badge-music {
@@ -155,7 +179,7 @@ aside {
     padding: 1.5rem;
     border-radius: 8px;
     border: 1px solid #e0e0e0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 footer {
@@ -171,7 +195,7 @@ footer {
     .layout-wrapper {
         padding: 0 30px;
     }
-    
+
     .header-inner {
         padding: 1.5rem 30px;
     }
@@ -195,28 +219,28 @@ footer {
 @media (min-width: 1024px) {
     .layout-wrapper {
         max-width: 1400px;
-        padding: 0 40px; 
-        gap: 32px; 
+        padding: 0 40px;
+        gap: 32px;
         display: grid;
         grid-template-columns: 2fr 1fr;
         align-items: start;
     }
-    
+
     .header-inner {
         max-width: 1400px;
         padding: 2.5rem 40px;
         flex-direction: row;
         justify-content: space-between;
     }
-    
+
     .header-inner h1 {
         font-size: 36px;
     }
-    
+
     .header-inner nav {
         gap: 24px;
     }
-    
+
     .cards {
         grid-template-columns: repeat(3, 1fr);
     }

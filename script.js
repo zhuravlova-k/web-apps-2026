@@ -1,6 +1,6 @@
 console.log('script.js підключено');
 
-// масив об'єктів з даними подій
+// масив об'єктів з даними подій (з практикуму 6)
 const cityEvents = [
     { title: 'Симфонічний концерт просто неба', category: 'music' },
     { title: 'Виставка сучасного мистецтва', category: 'art' },
@@ -8,61 +8,53 @@ const cityEvents = [
     { title: 'Хор', category: 'music' }
 ];
 
-// стрілкова функція: обрізає текст до n символів і додає '…' 
-const shorten = (text, n) => text.length > n ? text.slice(0, n).trimEnd() + '…' : text;
-
-// вибір контейнерів на сторінці 
+// вибір контейнера списку та елемента-підсумку
 const listContainer = document.querySelector('#events-list');
 const countElement = document.querySelector('#events-count');
 
-// функція рендеру подій у dom 
-function renderEvents(events) {
-    // очищення наявного вмісту контейнера
-    listContainer.innerHTML = '';
-    let count = 0;
+// програмне видалення статичних карток-заглушок з практикуму 2
+listContainer.querySelectorAll('article').forEach(card => card.remove());
 
-    // цикл для створення елементів кожної події
+// стрілкова функція з практикуму 6: обрізає текст до n символів і додає '…'
+const shorten = (text, n) => text.length > n ? text.slice(0, n).trimEnd() + '…' : text;
+
+// рендер подій у DOM: очищає контейнер, для кожної події створює article
+// з p (категорія) і h3 (назва), ставить data-category та класи за категорією,
+// після циклу оновлює лічильник подій
+function renderEvents(events) {
+    listContainer.innerHTML = '';
+
     for (const event of events) {
-        // створення article (крок 5)
         const card = document.createElement('article');
-        
-        // встановлення атрибута та додавання умовного класу за категорією 
         card.setAttribute('data-category', event.category);
         card.classList.add(`event-card-${event.category}`);
 
-        // створення параграфа для категорії 
         const categoryPara = document.createElement('p');
-        
-        let categoryName = '';
+        categoryPara.classList.add('badge');
         if (event.category === 'music') {
-            categoryName = 'Музика';
-            categoryPara.classList.add('badge', 'badge-music');
+            categoryPara.textContent = 'Музика';
+            categoryPara.classList.add('badge-music');
         } else if (event.category === 'art') {
-            categoryName = 'Мистецтво';
-            categoryPara.classList.add('badge', 'badge-art');
+            categoryPara.textContent = 'Мистецтво';
+            categoryPara.classList.add('badge-art');
         } else if (event.category === 'theater') {
-            categoryName = 'Театр';
-            categoryPara.classList.add('badge', 'badge-theater');
+            categoryPara.textContent = 'Театр';
+            categoryPara.classList.add('badge-theater');
+        } else {
+            categoryPara.textContent = event.category;
         }
-        categoryPara.textContent = categoryName;
 
-        // створення заголовка h3 із застосуванням нашої функції обрізання
+        // назва виводиться повністю; shorten лише додає підказку при наведенні
         const title = document.createElement('h3');
-        title.textContent = shorten(event.title, 25);
+        title.textContent = event.title;
+        title.title = shorten(event.title, 20);
 
-        // додавання дочірніх елементів у картку
         card.append(categoryPara, title);
-        
-        // додавання готової картки у контейнер 
         listContainer.append(card);
-        count++;
     }
 
-    // оновлення підсумкового елемента 
-    if (countElement) {
-        countElement.textContent = `Знайдено подій: ${count}`;
-    }
+    countElement.textContent = `Знайдено подій: ${events.length}`;
 }
 
-// виклик рендеру при завантаженні сторінки 
+// виклик рендеру при завантаженні сторінки
 renderEvents(cityEvents);
