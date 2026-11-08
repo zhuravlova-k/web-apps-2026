@@ -1,6 +1,6 @@
 console.log('script.js підключено');
 
-// масив об'єктів з даними подій (узгоджено з розміткою HTML + 1 коротка подія для тесту)
+// масив об'єктів з даними подій
 const cityEvents = [
     { title: 'Симфонічний концерт просто неба', category: 'music' },
     { title: 'Виставка сучасного мистецтва', category: 'art' },
@@ -8,42 +8,61 @@ const cityEvents = [
     { title: 'Хор', category: 'music' }
 ];
 
-// стрілкова функція: обрізає текст до n символів і додає '…' (один символ) без зайвих пробілів
+// стрілкова функція: обрізає текст до n символів і додає '…' 
 const shorten = (text, n) => text.length > n ? text.slice(0, n).trimEnd() + '…' : text;
 
-// звичайна функція: перебирає події циклом for...of; якщо передано targetCategory —
-// виводить лише події цієї категорії, інакше всі; класифікує через if/else і рахує події
-function processEvents(events, targetCategory) {
-    console.log(targetCategory ? `--- Події в категорії: ${targetCategory} ---` : '--- Усі події ---');
+// вибір контейнерів на сторінці 
+const listContainer = document.querySelector('#events-list');
+const countElement = document.querySelector('#events-count');
+
+// функція рендеру подій у dom 
+function renderEvents(events) {
+    // очищення наявного вмісту контейнера
+    listContainer.innerHTML = '';
     let count = 0;
 
+    // цикл для створення елементів кожної події
     for (const event of events) {
-        if (!targetCategory || event.category === targetCategory) {
-            let message;
-            if (event.category === 'music') {
-                message = 'Музична подія:';
-            } else if (event.category === 'art') {
-                message = 'Мистецька подія:';
-            } else if (event.category === 'theater') {
-                message = 'Театральна подія:';
-            } else {
-                message = 'Інша подія:';
-            }
-            console.log(`${message} ${shorten(event.title, 20)}`);
-            count++;
+        // створення article (крок 5)
+        const card = document.createElement('article');
+        
+        // встановлення атрибута та додавання умовного класу за категорією 
+        card.setAttribute('data-category', event.category);
+        card.classList.add(`event-card-${event.category}`);
+
+        // створення параграфа для категорії 
+        const categoryPara = document.createElement('p');
+        
+        let categoryName = '';
+        if (event.category === 'music') {
+            categoryName = 'Музика';
+            categoryPara.classList.add('badge', 'badge-music');
+        } else if (event.category === 'art') {
+            categoryName = 'Мистецтво';
+            categoryPara.classList.add('badge', 'badge-art');
+        } else if (event.category === 'theater') {
+            categoryName = 'Театр';
+            categoryPara.classList.add('badge', 'badge-theater');
         }
+        categoryPara.textContent = categoryName;
+
+        // створення заголовка h3 із застосуванням нашої функції обрізання
+        const title = document.createElement('h3');
+        title.textContent = shorten(event.title, 25);
+
+        // додавання дочірніх елементів у картку
+        card.append(categoryPara, title);
+        
+        // додавання готової картки у контейнер 
+        listContainer.append(card);
+        count++;
     }
 
-    console.log(`Знайдено подій: ${count}`);
+    // оновлення підсумкового елемента 
+    if (countElement) {
+        countElement.textContent = `Знайдено подій: ${count}`;
+    }
 }
 
-// виклики: окрема категорія та всі події
-processEvents(cityEvents, 'music');
-processEvents(cityEvents, 'theater');
-processEvents(cityEvents);
-
-// прямі виклики стрілкової функції (Крок 7)
-console.log('--- Перевірка функції shorten ---');
-console.log(shorten(cityEvents[0].title, 20));           // реальні дані, довший текст
-console.log(shorten(cityEvents[3].title, 20));           // реальні дані, короткий текст
-console.log(shorten('Ця назва занадто довга і має бути обрізана', 20));
+// виклик рендеру при завантаженні сторінки 
+renderEvents(cityEvents);
