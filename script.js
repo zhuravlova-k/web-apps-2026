@@ -27,7 +27,8 @@ function renderEvents(events) {
     for (const event of events) {
         const card = document.createElement('article');
         card.setAttribute('data-category', event.category);
-        card.classList.add(`event-card-${event.category}`);
+
+        card.classList.add('event-card', `event-card-${event.category}`);
 
         const categoryPara = document.createElement('p');
         categoryPara.classList.add('badge');
