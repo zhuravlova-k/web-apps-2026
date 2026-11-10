@@ -21,14 +21,14 @@
 
     <div class="layout-wrapper">
         <main>
-            <section id="filters">
+            <section id="filters" class="filters-section">
                 <h2>Фільтр за датою/категорією</h2>
                 <div class="filter-controls">
                     <label for="date-filter">Дата:</label>
                     <input type="date" id="date-filter" name="date">
 
                     <label for="category-filter">Категорія:</label>
-                    <select id="category-filter" name="category">
+                    <select id="category-filter" class="category-select" name="category">
                         <option value="all">Усі</option>
                         <option value="music">Музика</option>
                         <option value="art">Мистецтво</option>
@@ -40,25 +40,25 @@
             <section id="events">
                 <h2>Події</h2>
                 <div class="cards">
-                    <article class="category-music">
+                    <article class="event-card category-music">
                         <h3>Симфонічний концерт просто неба</h3>
-                        <p>28 травня, 19:00</p>
+                        <p class="event-date">28 травня, 19:00</p>
                     </article>
 
-                    <article class="category-art">
+                    <article class="event-card category-art">
                         <h3>Виставка сучасного мистецтва</h3>
-                        <p>30 травня, 12:00</p>
+                        <p class="event-date">30 травня, 12:00</p>
                     </article>
                     
-                    <article class="category-theater">
+                    <article class="event-card category-theater">
                         <h3>Театральна вистава "Тіні"</h3>
-                        <p>1 червня, 18:30</p>
+                        <p class="event-date">1 червня, 18:30</p>
                     </article>
                 </div>
             </section>
         </main>
 
-        <aside id="selected-event">
+        <aside id="selected-event" class="details-panel">
             <h2>Деталі обраної події</h2>
             <p>Натисніть на подію, щоб побачити деталі.</p>
         </aside>
