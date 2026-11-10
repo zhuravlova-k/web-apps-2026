@@ -22,14 +22,14 @@
 
     <div class="layout-wrapper">
         <main>
-            <section id="filters">
+            <section id="filters" class="filters-section">
                 <h2>Фільтр за датою/категорією</h2>
                 <div class="filter-controls">
                     <label for="date-filter">Дата:</label>
                     <input type="date" id="date-filter" name="date">
 
                     <label for="category-filter">Категорія:</label>
-                    <select id="category-filter" name="category">
+                    <select id="category-filter" class="category-select" name="category">
                         <option value="all">Усі</option>
                         <option value="music">Музика</option>
                         <option value="art">Мистецтво</option>
@@ -41,19 +41,19 @@
             <section id="events">
                 <h2>Події</h2>
                 <div class="cards">
-                    <article>
+                    <article class="event-card">
                         <span class="badge badge-music">Музика</span>
                         <h3>Симфонічний концерт просто неба</h3>
                         <p class="event-date">28 травня, 19:00</p>
                     </article>
 
-                    <article>
+                    <article class="event-card">
                         <span class="badge badge-art">Мистецтво</span>
                         <h3>Виставка сучасного мистецтва</h3>
                         <p class="event-date">30 травня, 12:00</p>
                     </article>
-
-                    <article>
+                    
+                    <article class="event-card">
                         <span class="badge badge-theater">Театр</span>
                         <h3>Театральна вистава "Тіні"</h3>
                         <p class="event-date">1 червня, 18:30</p>
@@ -62,7 +62,7 @@
             </section>
         </main>
 
-        <aside id="selected-event">
+        <aside id="selected-event" class="details-panel">
             <h2>Деталі обраної події</h2>
             <p>Натисніть на подію, щоб побачити деталі.</p>
         </aside>

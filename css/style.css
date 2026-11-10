@@ -4,7 +4,7 @@
 
 body {
     margin: 0;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     font-size: 16px;
     line-height: 1.6;
     color: #1a1a1a;
@@ -83,7 +83,7 @@ h3 {
     gap: 16px;
 }
 
-#filters {
+.filters-section {
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
@@ -99,7 +99,7 @@ h3 {
 }
 
 .filter-controls input, 
-.filter-controls select {
+.category-select {
     padding: 8px 12px;
     font-size: 16px;
     border: 1px solid #ccc;
@@ -112,7 +112,7 @@ h3 {
     gap: 16px;
 }
 
-article {
+.event-card {
     background-color: #ffffff;
     padding: 20px; 
     border-radius: 8px;
@@ -131,17 +131,9 @@ article {
     color: #ffffff;
 }
 
-.badge-music {
-    background-color: #023e8a;
-}
-
-.badge-art {
-    background-color: #d00000;
-}
-
-.badge-theater {
-    background-color: #6a040f;
-}
+.badge-music { background-color: #023e8a; }
+.badge-art { background-color: #d00000; }
+.badge-theater { background-color: #6a040f; }
 
 .event-date {
     font-size: 18px;
@@ -150,7 +142,7 @@ article {
     margin: 4px 0 0 0;
 }
 
-aside {
+.details-panel {
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
@@ -168,28 +160,18 @@ footer {
 }
 
 @media (min-width: 600px) {
-    .layout-wrapper {
-        padding: 0 30px;
-    }
-    
-    .header-inner {
-        padding: 1.5rem 30px;
-    }
-
+    .layout-wrapper { padding: 0 30px; }
+    .header-inner { padding: 1.5rem 30px; }
     .header-inner nav {
         flex-direction: row;
         justify-content: center;
     }
-
     .filter-controls {
         flex-direction: row;
         align-items: center;
         flex-wrap: wrap;
     }
-
-    .cards {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .cards { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (min-width: 1024px) {
@@ -201,23 +183,13 @@ footer {
         grid-template-columns: 2fr 1fr;
         align-items: start;
     }
-    
     .header-inner {
         max-width: 1400px;
         padding: 2.5rem 40px;
         flex-direction: row;
         justify-content: space-between;
     }
-    
-    .header-inner h1 {
-        font-size: 36px;
-    }
-    
-    .header-inner nav {
-        gap: 24px;
-    }
-    
-    .cards {
-        grid-template-columns: repeat(3, 1fr);
-    }
+    .header-inner h1 { font-size: 36px; }
+    .header-inner nav { gap: 24px; }
+    .cards { grid-template-columns: repeat(3, 1fr); }
 }
