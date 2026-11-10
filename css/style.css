@@ -4,25 +4,26 @@
 
 body {
     margin: 0;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 1rem;
     line-height: 1.6;
     color: #333;
     background-color: #f4f4f9;
 }
 
 header {
-    background-color: #1a1a1a; 
+    background-color: #1a1a1a;
     padding: 1.5rem 2rem;
 }
 
 header h1 {
     margin: 0 0 10px 0;
     font-size: 2.5rem;
-    color: #ffffff; 
+    color: #ffffff;
 }
 
 header nav a {
-    color: #f1c40f; 
+    color: #f1c40f;
     text-decoration: none;
     font-weight: bold;
     margin-right: 20px;
@@ -30,15 +31,6 @@ header nav a {
 
 header nav a:hover {
     text-decoration: underline;
-}
-
-footer {
-    text-align: center;
-    padding: 1.5rem;
-    background-color: #e0e0e0;
-    color: #555;
-    margin-top: 2rem;
-    border-top: 1px solid #ccc;
 }
 
 main {
@@ -51,14 +43,14 @@ section {
     margin-bottom: 2.5rem;
 }
 
-#filters {
+.filters-section {
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-#category-filter {
+.category-select {
     padding: 6px 10px;
     font-size: 1rem;
     margin-left: 10px;
@@ -66,36 +58,51 @@ section {
     border-radius: 4px;
 }
 
-article {
+.event-card {
     background-color: #ffffff;
-    padding: 16px; 
-    margin-bottom: 10px; 
+    padding: 16px;
+    margin-bottom: 10px;
     border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.category-music {
-    border-left: 4px solid #3498db; 
-}
-
-.category-art {
-    border-left: 4px solid #e74c3c; 
-}
-
-article h3 {
+.event-card h3 {
     margin-top: 0;
     color: #2c3e50;
 }
 
-article p {
+.event-card p {
     margin-bottom: 0;
 }
 
-aside {
-    max-width: 900px;
+.category-music {
+    border-left: 4px solid #3498db;
+}
+
+.category-art {
+    border-left: 4px solid #e74c3c;
+}
+
+.category-theater {
+    border-left: 4px solid #9b59b6;
+}
+
+.details-panel {
+    width: calc(100% - 30px);
+    max-width: 870px;
     margin: 0 auto 2rem auto;
-    background-color: #e9ecef;
     padding: 1.5rem;
-    border-radius: 8px;
+    background-color: #e9ecef;
     border: 1px solid #ced4da;
+    border-radius: 8px;
+}
+
+footer {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #555;
+    background-color: #e0e0e0;
+    border-top: 1px solid #ccc;
 }
