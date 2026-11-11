@@ -1,11 +1,11 @@
 console.log('script.js підключено');
 
-// масив об'єктів з даними подій
+// масив об'єктів з даними подій (додано поле date для консистентності з формою)
 const cityEvents = [
-    { title: 'Симфонічний концерт просто неба', category: 'music' },
-    { title: 'Виставка сучасного мистецтва', category: 'art' },
-    { title: 'Театральна вистава "Тіні"', category: 'theater' },
-    { title: 'Хор', category: 'music' }
+    { title: 'Симфонічний концерт просто неба', category: 'music', date: '2026-05-28' },
+    { title: 'Виставка сучасного мистецтва', category: 'art', date: '2026-05-30' },
+    { title: 'Театральна вистава "Тіні"', category: 'theater', date: '2026-06-01' },
+    { title: 'Хор', category: 'music', date: '2026-06-15' }
 ];
 
 // вибір контейнерів та елементів DOM
@@ -13,7 +13,7 @@ const listContainer = document.querySelector('#events-list');
 const countElement = document.querySelector('#events-count');
 const addEventForm = document.querySelector('#add-event-form');
 const titleInput = document.querySelector('#event-title');
-const categoryFilter = document.querySelector('#category-filter');
+const categoryFiltersContainer = document.querySelector('#category-filters');
 
 // програмне видалення статичних карток-заглушок
 listContainer.querySelectorAll('article').forEach(card => card.remove());
@@ -50,7 +50,12 @@ function renderEvents(events) {
         title.textContent = event.title;
         title.title = shorten(event.title, 20);
 
-        card.append(categoryPara, title);
+        // виведення дати в картці
+        const datePara = document.createElement('p');
+        datePara.classList.add('event-date');
+        datePara.textContent = event.date;
+
+        card.append(categoryPara, title, datePara);
         listContainer.append(card);
     }
 
@@ -85,7 +90,10 @@ addEventForm.addEventListener('submit', (event) => {
 
     cityEvents.push(newEvent);
 
-    const currentFilter = categoryFilter.value;
+    // беремо категорію з активної кнопки фільтра, щоб не зламати поточний вигляд
+    const activeFilterBtn = categoryFiltersContainer.querySelector('.active');
+    const currentFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+
     if (currentFilter === 'all') {
         renderEvents(cityEvents);
     } else {
@@ -96,9 +104,16 @@ addEventForm.addEventListener('submit', (event) => {
     addEventForm.reset();
 });
 
-// миттєва фільтрація списку подій при зміні селекту категорії
-categoryFilter.addEventListener('change', (event) => {
-    const selectedCategory = event.target.value;
+// делегування подій: фільтрація списку подій за кліком на кнопки категорій
+categoryFiltersContainer.addEventListener('click', (event) => {
+    const btn = event.target.closest('.filter-btn');
+    if (!btn) return; // якщо клік був не по кнопці, ігноруємо
+
+    // оновлюємо візуальний стан кнопок
+    categoryFiltersContainer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const selectedCategory = btn.dataset.filter;
 
     if (selectedCategory === 'all') {
         renderEvents(cityEvents);

@@ -23,18 +23,13 @@
     <div class="layout-wrapper">
         <main>
             <section id="filters" class="filters-section">
-                <h2>Фільтр за датою/категорією</h2>
-                <div class="filter-controls">
-                    <label for="date-filter">Дата:</label>
-                    <input type="date" id="date-filter" name="date">
-
-                    <label for="category-filter">Категорія:</label>
-                    <select id="category-filter" class="category-select" name="category">
-                        <option value="all">Усі</option>
-                        <option value="music">Музика</option>
-                        <option value="art">Мистецтво</option>
-                        <option value="theater">Театр</option>
-                    </select>
+                <h2>Фільтр за категорією</h2>
+                <div class="filter-controls" id="category-filters">
+                    <span class="filter-label">Категорія:</span>
+                    <button type="button" class="filter-btn active" data-filter="all">Усі</button>
+                    <button type="button" class="filter-btn" data-filter="music">Музика</button>
+                    <button type="button" class="filter-btn" data-filter="art">Мистецтво</button>
+                    <button type="button" class="filter-btn" data-filter="theater">Театр</button>
                 </div>
                 <p id="events-count"></p>
             </section>
