@@ -39,6 +39,33 @@
                 <p id="events-count"></p>
             </section>
 
+            <section id="add-event-section" class="add-event-section">
+                <h2>Додати нову подію</h2>
+                <form id="add-event-form" class="add-event-form">
+                    <div class="form-group">
+                        <label for="event-title">Назва події:</label>
+                        <input type="text" id="event-title" name="title" required pattern=".{3,}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-category">Категорія:</label>
+                        <select id="event-category" name="category" required>
+                            <option value="" disabled selected>Оберіть категорію</option>
+                            <option value="music">Музика</option>
+                            <option value="art">Мистецтво</option>
+                            <option value="theater">Театр</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-date">Дата:</label>
+                        <input type="date" id="event-date" name="date" required>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Додати подію</button>
+                </form>
+            </section>
+
             <section id="events">
                 <h2>Події</h2>
                 <div class="cards" id="events-list">
@@ -53,7 +80,7 @@
                         <h3>Виставка сучасного мистецтва</h3>
                         <p class="event-date">30 травня, 12:00</p>
                     </article>
-                    
+
                     <article class="event-card">
                         <span class="badge badge-theater">Театр</span>
                         <h3>Театральна вистава "Тіні"</h3>
