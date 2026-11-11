@@ -1,6 +1,6 @@
 console.log('script.js підключено');
 
-// масив об'єктів з даними подій (з практикуму 6)
+// масив об'єктів з даними подій
 const cityEvents = [
     { title: 'Симфонічний концерт просто неба', category: 'music' },
     { title: 'Виставка сучасного мистецтва', category: 'art' },
@@ -8,19 +8,20 @@ const cityEvents = [
     { title: 'Хор', category: 'music' }
 ];
 
-// вибір контейнера списку та елемента-підсумку
+// вибір контейнерів та елементів DOM
 const listContainer = document.querySelector('#events-list');
 const countElement = document.querySelector('#events-count');
+const addEventForm = document.querySelector('#add-event-form');
+const titleInput = document.querySelector('#event-title');
+const categoryFilter = document.querySelector('#category-filter');
 
-// програмне видалення статичних карток-заглушок з практикуму 2
+// програмне видалення статичних карток-заглушок
 listContainer.querySelectorAll('article').forEach(card => card.remove());
 
-// стрілкова функція з практикуму 6: обрізає текст до n символів і додає '…'
+// стрілкова функція для обрізання тексту
 const shorten = (text, n) => text.length > n ? text.slice(0, n).trimEnd() + '…' : text;
 
-// рендер подій у DOM: очищає контейнер, для кожної події створює article
-// з p (категорія) і h3 (назва), ставить data-category та класи за категорією,
-// після циклу оновлює лічильник подій
+// рендер подій у DOM
 function renderEvents(events) {
     listContainer.innerHTML = '';
 
@@ -45,7 +46,6 @@ function renderEvents(events) {
             categoryPara.textContent = event.category;
         }
 
-        // назва виводиться повністю; shorten лише додає підказку при наведенні
         const title = document.createElement('h3');
         title.textContent = event.title;
         title.title = shorten(event.title, 20);
@@ -57,5 +57,53 @@ function renderEvents(events) {
     countElement.textContent = `Знайдено подій: ${events.length}`;
 }
 
-// виклик рендеру при завантаженні сторінки
+// початковий рендер при завантаженні сторінки
 renderEvents(cityEvents);
+
+// додаткова кастомна валідація поля назви на льоту
+titleInput.addEventListener('input', () => {
+    if (titleInput.value.trim().length < 3) {
+        titleInput.setCustomValidity('Назва події має містити щонайменше 3 символи');
+    } else {
+        titleInput.setCustomValidity('');
+    }
+});
+
+// обробка відправки форми додавання нової події без перезавантаження
+addEventForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const newTitle = titleInput.value.trim();
+    const newCategory = document.querySelector('#event-category').value;
+    const newDate = document.querySelector('#event-date').value;
+
+    const newEvent = {
+        title: newTitle,
+        category: newCategory,
+        date: newDate
+    };
+
+    cityEvents.push(newEvent);
+
+    const currentFilter = categoryFilter.value;
+    if (currentFilter === 'all') {
+        renderEvents(cityEvents);
+    } else {
+        const filteredEvents = cityEvents.filter(e => e.category === currentFilter);
+        renderEvents(filteredEvents);
+    }
+
+    addEventForm.reset();
+});
+
+// миттєва фільтрація списку подій при зміні селекту категорії
+categoryFilter.addEventListener('change', (event) => {
+    const selectedCategory = event.target.value;
+
+    if (selectedCategory === 'all') {
+        renderEvents(cityEvents);
+    } else {
+        const filteredEvents = cityEvents.filter(e => e.category === selectedCategory);
+        renderEvents(filteredEvents);
+    }
+});
