@@ -1,10 +1,12 @@
-// налаштування API: для перевірки помилки 404 змініть код країни на 'XX'
+// обґрунтування вибору фреймворку 
+// Обрано фреймворк Vue 3 (через глобальну збірку CDN), оскільки він дозволяє 
+// легко інтегрувати реактивність та компонентний підхід у наявний HTML-проєкт 
+// без складної конфігурації збірки (на відміну від React + Babel).
+
 const API_YEAR = '2026';
 const API_COUNTRY = 'UA';
 const API_URL = `https://date.nager.at/api/v3/PublicHolidays/${API_YEAR}/${API_COUNTRY}`;
 
-// помилка API: message завжди придатне для показу користувачу,
-// технічні деталі (status, cause) йдуть лише в консоль
 class ApiError extends Error {
     constructor(message, { status, cause } = {}) {
         super(message, { cause });
@@ -20,27 +22,8 @@ const CATEGORY_LABELS = {
     holiday: 'Свято'
 };
 
-let cityEvents = [
-    { title: 'Симфонічний концерт просто неба', category: 'music', date: '2026-05-28' },
-    { title: 'Виставка сучасного мистецтва', category: 'art', date: '2026-05-30' },
-    { title: 'Театральна вистава "Тіні"', category: 'theater', date: '2026-06-01' },
-    { title: 'Хор', category: 'music', date: '2026-06-15' }
-];
-
-const listContainer = document.querySelector('#events-list');
-const countElement = document.querySelector('#events-count');
-const addEventForm = document.querySelector('#add-event-form');
-const titleInput = document.querySelector('#event-title');
-const categoryInput = document.querySelector('#event-category');
-const dateInput = document.querySelector('#event-date');
-const categoryFiltersContainer = document.querySelector('#category-filters');
-const loadApiBtn = document.querySelector('#load-api-btn');
-const apiStatusElement = document.querySelector('#api-status');
-
 const shorten = (text, n) => text.length > n ? text.slice(0, n).trimEnd() + '…' : text;
 
-// timeZone: 'UTC', бо рядок 'YYYY-MM-DD' парситься як UTC-північ
-// (інакше в зонах західніше UTC дата зсунеться на день назад)
 const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('uk-UA', {
         day: 'numeric',
@@ -50,158 +33,169 @@ const formatDate = (dateString) => {
     });
 };
 
-// сортує події за датою і рендерить їх з урахуванням активного фільтра
-function updateRender() {
-    cityEvents.sort((a, b) => a.date.localeCompare(b.date));
+const EventCard = {
+    props: ['title', 'category', 'date', 'engName'],
+    template: `
+        <article :class="['event-card', \`event-card-\${category}\`]" :data-category="category">
+            <p :class="['badge', \`badge-\${category}\`]">{{ categoryLabel }}</p>
+            <h3 :title="shortenedTitle">{{ title }}</h3>
+            <p v-if="engName" class="event-eng-name">{{ engName }}</p>
+            <p class="event-date">{{ formattedDate }}</p>
+            
+            <!-- Похідне значення (Варіант 5): кількість днів до події -->
+            <p class="days-until" style="font-size: 14px; font-weight: 500; margin-top: 8px; color: #555;">
+                <span v-if="daysUntil > 0">⏳ Залишилося днів: {{ daysUntil }}</span>
+                <span v-else-if="daysUntil === 0" style="color: #2a9d8f;">🎉 Подія сьогодні!</span>
+                <span v-else style="color: #999;">🕒 Подія вже минула</span>
+            </p>
+        </article>
+    `,
+    computed: {
+        categoryLabel() {
+            return CATEGORY_LABELS[this.category] || this.category;
+        },
+        formattedDate() {
+            return formatDate(this.date);
+        },
+        shortenedTitle() {
+            return shorten(this.title, 60);
+        },
+        daysUntil() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-    const activeFilterBtn = categoryFiltersContainer.querySelector('.active');
-    const currentFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+            const eventDate = new Date(this.date);
+            eventDate.setHours(0, 0, 0, 0);
 
-    if (currentFilter === 'all') {
-        renderEvents(cityEvents);
-    } else {
-        renderEvents(cityEvents.filter(e => e.category === currentFilter));
+            const diffTime = eventDate - today;
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        }
     }
-}
+};
 
-function renderEvents(events) {
-    listContainer.innerHTML = '';
-
-    for (const event of events) {
-        const card = document.createElement('article');
-        card.setAttribute('data-category', event.category);
-        card.classList.add('event-card', `event-card-${event.category}`);
-
-        const badge = document.createElement('p');
-        badge.classList.add('badge', `badge-${event.category}`);
-        badge.textContent = CATEGORY_LABELS[event.category] ?? event.category;
-
-        // дуже довгі назви скорочуємо, повний текст лишається у підказці
-        const title = document.createElement('h3');
-        title.textContent = shorten(event.title, 60);
-        title.title = event.title;
-
-        card.append(badge, title);
-
-        // англійська назва (поле name з API) є лише в подій з API
-        if (event.engName) {
-            const engNamePara = document.createElement('p');
-            engNamePara.classList.add('event-eng-name');
-            engNamePara.textContent = event.engName;
-            card.append(engNamePara);
+const app = Vue.createApp({
+    components: {
+        'event-card': EventCard
+    },
+    data() {
+        return {
+            events: [
+                { id: 1, title: 'Симфонічний концерт просто неба', category: 'music', date: '2026-05-28' },
+                { id: 2, title: 'Виставка сучасного мистецтва', category: 'art', date: '2026-05-30' },
+                { id: 3, title: 'Театральна вистава "Тіні"', category: 'theater', date: '2026-06-01' },
+                { id: 4, title: 'Хор', category: 'music', date: '2026-06-15' }
+            ],
+            currentFilter: 'all',
+            newEvent: {
+                title: '',
+                category: '',
+                date: ''
+            },
+            apiStatusMessage: '',
+            apiStatusClass: '',
+            isApiLoading: false,
+            nextId: 5 // лічильник для генерації унікальних id новим подіям
+        };
+    },
+    computed: {
+        // реактивна фільтрація та сортування (замінює стару updateRender)
+        filteredEvents() {
+            let result = this.events;
+            if (this.currentFilter !== 'all') {
+                result = result.filter(e => e.category === this.currentFilter);
+            }
+            // створюємо копію масиву перед сортуванням, щоб не мутувати реактивний стан напряму
+            return [...result].sort((a, b) => a.date.localeCompare(b.date));
         }
+    },
+    methods: {
+        // обробник подання форми
+        addEvent() {
+            if (this.newEvent.title.length < 3) {
+                alert('Назва події має містити щонайменше 3 символи');
+                return;
+            }
 
-        const datePara = document.createElement('p');
-        datePara.classList.add('event-date');
-        datePara.textContent = formatDate(event.date);
-
-        card.append(datePara);
-        listContainer.append(card);
-    }
-
-    countElement.textContent = `Знайдено подій: ${events.length}`;
-}
-
-updateRender();
-
-// завантажує державні свята з Nager.Date Public Holidays API (https://date.nager.at)
-async function loadData() {
-    apiStatusElement.textContent = 'Завантаження...';
-    apiStatusElement.className = 'status-msg status-loading';
-    loadApiBtn.disabled = true;
-
-    try {
-        let response;
-        try {
-            response = await fetch(API_URL);
-        } catch (networkError) {
-            // fetch відхиляється лише тоді, коли запит не дійшов до сервера (offline, CORS)
-            throw new ApiError('Помилка з\'єднання. Перевірте інтернет.', { cause: networkError });
-        }
-
-        // fetch не вважає 404/500 помилкою, тому статус перевіряємо вручну
-        if (!response.ok) {
-            const message = response.status === 404
-                ? 'Дані про події не знайдено'
-                : 'Не вдалося завантажити дані з сервера.';
-            throw new ApiError(message, { status: response.status });
-        }
-
-        let data;
-        try {
-            data = await response.json();
-        } catch (parseError) {
-            throw new ApiError('Сервер повернув некоректну відповідь.', {
-                status: response.status,
-                cause: parseError
+            // Vue сам перемалює список
+            this.events.push({
+                id: this.nextId++,
+                title: this.newEvent.title,
+                category: this.newEvent.category,
+                date: this.newEvent.date
             });
+
+            // Очищення полів форми
+            this.newEvent.title = '';
+            this.newEvent.category = '';
+            this.newEvent.date = '';
+        },
+
+        // оновлена функція роботи з API (повністю реактивна)
+        async loadApiData() {
+            this.apiStatusMessage = 'Завантаження...';
+            this.apiStatusClass = 'status-loading';
+            this.isApiLoading = true;
+
+            try {
+                let response;
+                try {
+                    response = await fetch(API_URL);
+                } catch (networkError) {
+                    throw new ApiError('Помилка з\'єднання. Перевірте інтернет.', { cause: networkError });
+                }
+
+                if (!response.ok) {
+                    const message = response.status === 404
+                        ? 'Дані про події не знайдено'
+                        : 'Не вдалося завантажити дані з сервера.';
+                    throw new ApiError(message, { status: response.status });
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    throw new ApiError('Сервер повернув некоректну відповідь.', {
+                        status: response.status,
+                        cause: parseError
+                    });
+                }
+
+                if (!Array.isArray(data)) {
+                    throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
+                }
+                if (data.length === 0) {
+                    throw new ApiError('Дані про події не знайдено', { status: response.status });
+                }
+
+                const apiEvents = data.map((holiday, index) => ({
+                    id: 'api-' + index + '-' + holiday.date, // генеруємо унікальний ID для v-for
+                    title: holiday.localName,
+                    engName: holiday.name,
+                    category: 'holiday',
+                    date: holiday.date,
+                    isApi: true
+                }));
+
+                // дедуплікація та оновлення стану
+                this.events = this.events.filter(e => !e.isApi).concat(apiEvents);
+
+                this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
+                this.apiStatusClass = 'status-success';
+
+            } catch (error) {
+                console.error(`Помилка завантаження API (статус: ${error.status ?? 'немає'}):`, error);
+
+                this.apiStatusClass = 'status-error';
+                this.apiStatusMessage = error instanceof ApiError
+                    ? error.message
+                    : 'Сталася помилка при обробці даних.';
+            } finally {
+                this.isApiLoading = false;
+            }
         }
-
-        if (!Array.isArray(data)) {
-            throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
-        }
-        if (data.length === 0) {
-            throw new ApiError('Дані про події не знайдено', { status: response.status });
-        }
-
-        const apiEvents = data.map(holiday => ({
-            title: holiday.localName,
-            engName: holiday.name,
-            category: 'holiday',
-            date: holiday.date,
-            isApi: true // маркер, щоб при повторному оновленні свята не дублювались
-        }));
-
-        cityEvents = cityEvents.filter(e => !e.isApi).concat(apiEvents);
-        updateRender();
-
-        apiStatusElement.textContent = `Успішно завантажено свят: ${apiEvents.length}`;
-        apiStatusElement.className = 'status-msg status-success';
-
-    } catch (error) {
-        console.error(`Помилка завантаження API (статус: ${error.status ?? 'немає'}):`, error);
-
-        apiStatusElement.className = 'status-msg status-error';
-        // користувачу показуємо лише своє повідомлення, а не технічний текст винятку
-        apiStatusElement.textContent = error instanceof ApiError
-            ? error.message
-            : 'Сталася помилка при обробці даних.';
-    } finally {
-        loadApiBtn.disabled = false;
     }
-}
-
-loadApiBtn.addEventListener('click', loadData);
-
-
-titleInput.addEventListener('input', () => {
-    if (titleInput.value.trim().length < 3) {
-        titleInput.setCustomValidity('Назва події має містити щонайменше 3 символи');
-    } else {
-        titleInput.setCustomValidity('');
-    }
 });
 
-addEventForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    cityEvents.push({
-        title: titleInput.value.trim(),
-        category: categoryInput.value,
-        date: dateInput.value
-    });
-
-    updateRender();
-    addEventForm.reset();
-});
-
-// делегування подій: один обробник на контейнер кнопок фільтра
-categoryFiltersContainer.addEventListener('click', (event) => {
-    const btn = event.target.closest('.filter-btn');
-    if (!btn) return;
-
-    categoryFiltersContainer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    updateRender();
-});
+// запуск Vue-додатка
+app.mount('#app');
