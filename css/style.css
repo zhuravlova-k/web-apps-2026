@@ -151,7 +151,8 @@ h3 {
     color: #ffffff;
 }
 
-.cards article p.badge {
+.cards article p.badge, 
+.cards article span.badge {
     margin: 0;
 }
 
@@ -244,4 +245,54 @@ footer {
     .cards {
         grid-template-columns: repeat(3, 1fr);
     }
+}
+
+.api-controls {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.api-btn {
+    background-color: #023e8a;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.api-btn:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+}
+
+.status-msg {
+    font-weight: bold;
+}
+
+.status-loading {
+    color: #023e8a;
+}
+
+.status-error {
+    color: #d00000;
+}
+
+.event-card-holiday {
+    border-left: 4px solid #2a9d8f;
+}
+
+.badge-holiday {
+    background-color: #2a9d8f;
+}
+
+.event-eng-name {
+    font-size: 14px;
+    color: #555;
+    font-style: italic;
+    margin-top: -5px;
+    margin-bottom: 10px;
 }

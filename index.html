@@ -30,6 +30,7 @@
                     <button type="button" class="filter-btn" data-filter="music">Музика</button>
                     <button type="button" class="filter-btn" data-filter="art">Мистецтво</button>
                     <button type="button" class="filter-btn" data-filter="theater">Театр</button>
+                    <button type="button" class="filter-btn" data-filter="holiday">Свята</button>
                 </div>
                 <p id="events-count"></p>
             </section>
@@ -49,6 +50,7 @@
                             <option value="music">Музика</option>
                             <option value="art">Мистецтво</option>
                             <option value="theater">Театр</option>
+                            <option value="holiday">Свято</option>
                         </select>
                     </div>
 
@@ -64,30 +66,12 @@
             <section id="events">
                 <h2>Події</h2>
 
-                <div class="api-controls" style="margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-                    <button type="button" id="load-api-btn" class="submit-btn"
-                        style="background-color: #023e8a;">Оновити події (API)</button>
-                    <span id="api-status" style="font-weight: bold; color: #6a040f;"></span>
+                <div class="api-controls">
+                    <button type="button" id="load-api-btn" class="submit-btn api-btn">Оновити події (API)</button>
+                    <span id="api-status" class="status-msg" role="status" aria-live="polite"></span>
                 </div>
 
                 <div class="cards" id="events-list">
-                    <article class="event-card">
-                        <span class="badge badge-music">Музика</span>
-                        <h3>Симфонічний концерт просто неба</h3>
-                        <p class="event-date">28 травня, 19:00</p>
-                    </article>
-
-                    <article class="event-card">
-                        <span class="badge badge-art">Мистецтво</span>
-                        <h3>Виставка сучасного мистецтва</h3>
-                        <p class="event-date">30 травня, 12:00</p>
-                    </article>
-
-                    <article class="event-card">
-                        <span class="badge badge-theater">Театр</span>
-                        <h3>Театральна вистава "Тіні"</h3>
-                        <p class="event-date">1 червня, 18:30</p>
-                    </article>
                 </div>
             </section>
         </main>
