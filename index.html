@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Афіша подій міста</title>
     <link rel="stylesheet" href="css/style.css">
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
     <script src="script.js" defer></script>
 </head>
 
@@ -22,59 +25,75 @@
 
     <div class="layout-wrapper">
         <main>
-            <section id="filters" class="filters-section">
-                <h2>Фільтр за категорією</h2>
-                <div class="filter-controls" id="category-filters">
-                    <span class="filter-label">Категорія:</span>
-                    <button type="button" class="filter-btn active" data-filter="all">Усі</button>
-                    <button type="button" class="filter-btn" data-filter="music">Музика</button>
-                    <button type="button" class="filter-btn" data-filter="art">Мистецтво</button>
-                    <button type="button" class="filter-btn" data-filter="theater">Театр</button>
-                    <button type="button" class="filter-btn" data-filter="holiday">Свята</button>
-                </div>
-                <p id="events-count"></p>
-            </section>
+            <div id="app">
+                <section id="filters" class="filters-section">
+                    <h2>Фільтр за категорією</h2>
+                    <div class="filter-controls">
+                        <span class="filter-label">Категорія:</span>
+                        <button type="button" class="filter-btn" :class="{ active: currentFilter === 'all' }"
+                            @click="currentFilter = 'all'">Усі</button>
+                        <button type="button" class="filter-btn" :class="{ active: currentFilter === 'music' }"
+                            @click="currentFilter = 'music'">Музика</button>
+                        <button type="button" class="filter-btn" :class="{ active: currentFilter === 'art' }"
+                            @click="currentFilter = 'art'">Мистецтво</button>
+                        <button type="button" class="filter-btn" :class="{ active: currentFilter === 'theater' }"
+                            @click="currentFilter = 'theater'">Театр</button>
+                        <button type="button" class="filter-btn" :class="{ active: currentFilter === 'holiday' }"
+                            @click="currentFilter = 'holiday'">Свята</button>
+                    </div>
+                    <p id="events-count" class="status-msg">Знайдено подій: {{ filteredEvents.length }}</p>
+                </section>
 
-            <section id="add-event-section" class="add-event-section">
-                <h2>Додати нову подію</h2>
-                <form id="add-event-form" class="add-event-form">
-                    <div class="form-group">
-                        <label for="event-title">Назва події:</label>
-                        <input type="text" id="event-title" name="title" required pattern=".{3,}">
+                <section id="add-event-section" class="add-event-section">
+                    <h2>Додати нову подію</h2>
+                    <!-- @submit.prevent замінює event.preventDefault() -->
+                    <form id="add-event-form" class="add-event-form" @submit.prevent="addEvent">
+                        <div class="form-group">
+                            <label for="event-title">Назва події:</label>
+                            <!-- v-model зв'язує поле зі станом Vue -->
+                            <input type="text" id="event-title" v-model.trim="newEvent.title" required pattern=".{3,}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="event-category">Категорія:</label>
+                            <select id="event-category" v-model="newEvent.category" required>
+                                <option value="" disabled>Оберіть категорію</option>
+                                <option value="music">Музика</option>
+                                <option value="art">Мистецтво</option>
+                                <option value="theater">Театр</option>
+                                <option value="holiday">Свято</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="event-date">Дата:</label>
+                            <input type="date" id="event-date" v-model="newEvent.date" required>
+                        </div>
+
+                        <button type="submit" class="submit-btn">Додати подію</button>
+                    </form>
+                </section>
+
+                <section id="events">
+                    <h2>Події</h2>
+
+                    <div class="api-controls">
+                        <button type="button" class="submit-btn api-btn" @click="loadApiData" :disabled="isApiLoading">
+                            Оновити події (API)
+                        </button>
+                        <span class="status-msg" :class="apiStatusClass" role="status" aria-live="polite">
+                            {{ apiStatusMessage }}
+                        </span>
                     </div>
 
-                    <div class="form-group">
-                        <label for="event-category">Категорія:</label>
-                        <select id="event-category" name="category" required>
-                            <option value="" disabled selected>Оберіть категорію</option>
-                            <option value="music">Музика</option>
-                            <option value="art">Мистецтво</option>
-                            <option value="theater">Театр</option>
-                            <option value="holiday">Свято</option>
-                        </select>
+                    <div class="cards" id="events-list">
+                        <!-- виклик компонента EventCard з передачею props -->
+                        <event-card v-for="event in filteredEvents" :key="event.id" :title="event.title"
+                            :category="event.category" :date="event.date" :eng-name="event.engName">
+                        </event-card>
                     </div>
-
-                    <div class="form-group">
-                        <label for="event-date">Дата:</label>
-                        <input type="date" id="event-date" name="date" required>
-                    </div>
-
-                    <button type="submit" class="submit-btn">Додати подію</button>
-                </form>
-            </section>
-
-            <section id="events">
-                <h2>Події</h2>
-
-                <div class="api-controls">
-                    <button type="button" id="load-api-btn" class="submit-btn api-btn">Оновити події (API)</button>
-                    <span id="api-status" class="status-msg" role="status" aria-live="polite"></span>
-                </div>
-
-                <div class="cards" id="events-list">
-                    <!-- картки генеруються через JS -->
-                </div>
-            </section>
+                </section>
+            </div>
         </main>
 
         <aside id="selected-event" class="details-panel">
