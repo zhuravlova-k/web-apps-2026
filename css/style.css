@@ -254,32 +254,23 @@ footer {
     gap: 15px;
 }
 
-.api-btn {
+.submit-btn.api-btn {
     background-color: #023e8a;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    color: white;
-    cursor: pointer;
-    font-weight: bold;
 }
 
-.api-btn:disabled {
-    background-color: #999;
+.submit-btn.api-btn:hover:not(:disabled) {
+    background-color: #012a5e;
+}
+
+.submit-btn.api-btn:disabled {
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
-.status-msg {
-    font-weight: bold;
-}
-
-.status-loading {
-    color: #023e8a;
-}
-
-.status-error {
-    color: #d00000;
-}
+.status-msg { font-weight: bold; }
+.status-loading { color: #023e8a; }
+.status-success { color: #1b6b60; }
+.status-error { color: #d00000; }
 
 .event-card-holiday {
     border-left: 4px solid #2a9d8f;
