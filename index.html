@@ -6,54 +6,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Афіша подій міста</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="script.js" defer></script>
 </head>
 
 <body>
-    <header>
-        <h1>Афіша подій міста</h1>
-        <nav>
-            <a href="#events">Події</a>
-            <a href="#selected-event">Обрана подія</a>
-        </nav>
+    <header class="site-header">
+        <div class="header-inner">
+            <h1>Афіша подій міста</h1>
+            <nav>
+                <a href="#events">Події</a>
+                <a href="#selected-event">Обрана подія</a>
+            </nav>
+        </div>
     </header>
 
-    <main>
-        <section id="filters">
-            <h2>Фільтр за датою/категорією</h2>
-            <label for="category-filter">Оберіть категорію:</label>
-            <select id="category-filter" name="category">
-                <option value="music">Музика</option>
-                <option value="art">Мистецтво</option>
-                <option value="theater">Театр</option>
-            </select>
-        </section>
+    <div class="layout-wrapper">
+        <main>
+            <section id="filters" class="filters-section">
+                <h2>Фільтр за категорією</h2>
+                <div class="filter-controls" id="category-filters">
+                    <span class="filter-label">Категорія:</span>
+                    <button type="button" class="filter-btn active" data-filter="all">Усі</button>
+                    <button type="button" class="filter-btn" data-filter="music">Музика</button>
+                    <button type="button" class="filter-btn" data-filter="art">Мистецтво</button>
+                    <button type="button" class="filter-btn" data-filter="theater">Театр</button>
+                </div>
+                <p id="events-count"></p>
+            </section>
 
-        <section id="events">
-            <h2>Події</h2>
-            <article>
-                <h3>Симфонічний концерт просто неба</h3>
-                <img src="assets/img/concert-placeholder.jpg" alt="Оркестр на сцені парку">
-                <p>28 травня, 19:00</p>
-            </article>
+            <section id="add-event-section" class="add-event-section">
+                <h2>Додати нову подію</h2>
+                <form id="add-event-form" class="add-event-form">
+                    <div class="form-group">
+                        <label for="event-title">Назва події:</label>
+                        <input type="text" id="event-title" name="title" required pattern=".{3,}">
+                    </div>
 
-            <article>
-                <h3>Виставка сучасного мистецтва</h3>
-                <img src="assets/img/art-placeholder.jpg" alt="Картини в галереї">
-                <p>30 травня, 12:00</p>
-            </article>
-        </section>
-    </main>
+                    <div class="form-group">
+                        <label for="event-category">Категорія:</label>
+                        <select id="event-category" name="category" required>
+                            <option value="" disabled selected>Оберіть категорію</option>
+                            <option value="music">Музика</option>
+                            <option value="art">Мистецтво</option>
+                            <option value="theater">Театр</option>
+                        </select>
+                    </div>
 
-    <aside id="selected-event">
-        <h2>Деталі обраної події</h2>
-        <p>Натисніть на подію, щоб побачити деталі.</p>
-    </aside>
+                    <div class="form-group">
+                        <label for="event-date">Дата:</label>
+                        <input type="date" id="event-date" name="date" required>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Додати подію</button>
+                </form>
+            </section>
+
+            <section id="events">
+                <h2>Події</h2>
+                <div class="cards" id="events-list">
+                    <article class="event-card">
+                        <span class="badge badge-music">Музика</span>
+                        <h3>Симфонічний концерт просто неба</h3>
+                        <p class="event-date">28 травня, 19:00</p>
+                    </article>
+
+                    <article class="event-card">
+                        <span class="badge badge-art">Мистецтво</span>
+                        <h3>Виставка сучасного мистецтва</h3>
+                        <p class="event-date">30 травня, 12:00</p>
+                    </article>
+
+                    <article class="event-card">
+                        <span class="badge badge-theater">Театр</span>
+                        <h3>Театральна вистава "Тіні"</h3>
+                        <p class="event-date">1 червня, 18:30</p>
+                    </article>
+                </div>
+            </section>
+        </main>
+
+        <aside id="selected-event" class="details-panel">
+            <h2>Деталі обраної події</h2>
+            <p>Натисніть на подію, щоб побачити деталі.</p>
+        </aside>
+    </div>
 
     <footer>
         <p>Контакти організаторів: info@city-events.ua</p>
     </footer>
-
-    <script src="js/app.js" defer></script>
 </body>
 
 </html>
