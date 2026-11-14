@@ -15,6 +15,10 @@ const addEventForm = document.querySelector('#add-event-form');
 const titleInput = document.querySelector('#event-title');
 const categoryFiltersContainer = document.querySelector('#category-filters');
 
+// вибір елементів для API
+const loadApiBtn = document.querySelector('#load-api-btn');
+const apiStatusElement = document.querySelector('#api-status');
+
 // програмне видалення статичних карток-заглушок
 listContainer.querySelectorAll('article').forEach(card => card.remove());
 
@@ -122,3 +126,65 @@ categoryFiltersContainer.addEventListener('click', (event) => {
         renderEvents(filteredEvents);
     }
 });
+
+// URL відкритого API (Nager.Date Public Holidays)
+const API_URL = 'https://date.nager.at/api/v3/PublicHolidays/2026/UA';
+
+// асинхронна функція для завантаження даних
+async function loadData() {
+    apiStatusElement.textContent = 'Завантаження...';
+    apiStatusElement.style.color = '#023e8a';
+    loadApiBtn.disabled = true;
+
+    try {
+        // виконати fetch запит
+        const response = await fetch(API_URL);
+
+        // перевірити HTTP-статус 
+        if (!response.ok) {
+            throw new Error(`Дані про події не знайдено`);
+        }
+
+        const data = await response.json();
+
+        // адаптувати отримані дані під нашу структуру карток
+        const apiEvents = data.map(holiday => ({
+            title: holiday.localName,
+            category: 'theater',
+            date: holiday.date
+        }));
+
+        cityEvents.push(...apiEvents);
+
+        const activeFilterBtn = categoryFiltersContainer.querySelector('.active');
+        const currentFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+
+        if (currentFilter === 'all') {
+            renderEvents(cityEvents);
+        } else {
+            const filteredEvents = cityEvents.filter(e => e.category === currentFilter);
+            renderEvents(filteredEvents);
+        }
+
+    } catch (error) {
+        console.error('Помилка API:', error);
+
+        if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+            apiStatusElement.textContent = 'Помилка з\'єднання. Перевірте інтернет.';
+        } else {
+            apiStatusElement.textContent = error.message;
+        }
+        apiStatusElement.style.color = '#d00000';
+
+        return;
+
+    } finally {
+        loadApiBtn.disabled = false;
+        if (apiStatusElement.textContent === 'Завантаження...') {
+            apiStatusElement.textContent = ''; // ччищаємо текст, якщо запит успішний
+        }
+    }
+}
+
+// прив'язуємо завантаження API до кнопки
+loadApiBtn.addEventListener('click', loadData);
