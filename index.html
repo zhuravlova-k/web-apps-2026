@@ -17,6 +17,7 @@
             <h1>Афіша подій міста</h1>
             <nav>
                 <a href="#events">Події</a>
+                <a href="#saved-events">Обрані</a>
                 <a href="#selected-event">Обрана подія</a>
             </nav>
         </div>
@@ -41,9 +42,15 @@
                 <h2>Додати нову подію</h2>
                 <form id="add-event-form" class="add-event-form" @submit.prevent="addEvent">
                     <div class="form-group">
-                        <label for="event-title">Назва події:</label>
-                        <input type="text" id="event-title" v-model.trim="newEvent.title" required pattern=".{3,}"
+                        <label for="event-name">Назва події:</label>
+                        <input type="text" id="event-name" v-model.trim="newEvent.name" required pattern=".{3,}"
                             title="Щонайменше 3 символи">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-location">Місце проведення:</label>
+                        <input type="text" id="event-location" v-model.trim="newEvent.location" required pattern=".{2,}"
+                            title="Щонайменше 2 символи">
                     </div>
 
                     <div class="form-group">
@@ -77,22 +84,42 @@
                     </span>
                 </div>
 
+                <!-- картки афіші: кнопка на картці додає подію в обране або прибирає її -->
                 <div class="cards" id="events-list">
-                    <!-- додано обробник @delete-event для видалення карток -->
-                    <event-card v-for="event in filteredEvents" :key="event.id" :event-id="event.id"
-                        :title="event.title" :category="event.category" :category-label="formCategories[event.category]"
-                        :date="event.date" :eng-name="event.engName" :selected="event.id === selectedId"
-                        @select-event="handleSelectEvent" @delete-event="removeEvent">
+                    <event-card v-for="event in filteredEvents" :key="event.id" :event-id="event.id" :name="event.name"
+                        :category="event.category" :category-label="formCategories[event.category]" :date="event.date"
+                        :location="event.location" :eng-name="event.engName" :selected="event.id === selectedId"
+                        :saved="isSaved(event.id)" @select-event="handleSelectEvent" @toggle-favorite="toggleFavorite">
                     </event-card>
                 </div>
+                <p v-if="filteredEvents.length === 0" class="empty-msg">Подій за обраною категорією немає.</p>
+            </section>
+
+            <section id="saved-events" class="saved-section">
+                <h2>Обрані події</h2>
+                <p id="saved-count" class="status-msg">Збережено в {{ storageName }}: {{ savedEvents.length }}</p>
+
+                <!-- повідомлення про недоступність indexeddb та помилки операцій -->
+                <p v-if="storageNotice" class="status-msg status-warning" role="status">{{ storageNotice }}</p>
+                <p v-if="storageError" class="status-msg status-error" role="alert">{{ storageError }}</p>
+
+                <div class="cards" id="saved-list">
+                    <saved-card v-for="item in sortedSavedEvents" :key="item.id" :event-id="item.id" :name="item.name"
+                        :date="item.date" :location="item.location" :selected="item.id === selectedId"
+                        @select-event="handleSelectEvent" @remove-favorite="removeFavorite">
+                    </saved-card>
+                </div>
+                <p v-if="savedEvents.length === 0" class="empty-msg">
+                    Обраних подій поки немає. Натисніть «Додати в обране» на картці події.
+                </p>
             </section>
         </main>
 
         <aside id="selected-event" class="details-panel" ref="details">
             <h2>Деталі обраної події</h2>
-            <event-details v-if="selectedEvent" :title="selectedEvent.title"
+            <event-details v-if="selectedEvent" :name="selectedEvent.name"
                 :category-label="formCategories[selectedEvent.category]" :date="selectedEvent.date"
-                :eng-name="selectedEvent.engName">
+                :location="selectedEvent.location" :eng-name="selectedEvent.engName">
             </event-details>
             <p v-else class="details-placeholder">
                 Натисніть на картку події, щоб побачити деталі.

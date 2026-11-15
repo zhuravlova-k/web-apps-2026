@@ -1,5 +1,5 @@
 // --- обґрунтування вибору фреймворку ---
-// Обрано Vue 3 (глобальна збірка через CDN): він дає реактивність і компоненти
+// обрано Vue 3 (глобальна збірка через CDN): він дає реактивність і компоненти
 // у наявному HTML без збірки й Babel (на відміну від React + JSX).
 
 const API_YEAR = new Date().getFullYear();
@@ -8,6 +8,14 @@ const API_URL = `https://date.nager.at/api/v3/PublicHolidays/${API_YEAR}/${API_C
 
 const FILTER_CATEGORIES = { all: 'Усі', music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свята' };
 const FORM_CATEGORIES = { music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свято' };
+
+// налаштування сховищ: indexeddb (основне) і localstorage (міграція та резерв)
+const DB_NAME = 'EventsDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'savedEvents';
+const LS_KEY = 'appItems';
+const MIGRATION_FLAG_KEY = 'migrated';
+const DEFAULT_LOCATION = 'Місце не вказано';
 
 class ApiError extends Error {
     constructor(message, { status, cause } = {}) {
@@ -26,86 +34,166 @@ const dateWithOffset = (offsetDays) => {
     return toLocalISO(d);
 };
 
+// скорочує довгий текст до max символів по межі слова
+const shortenText = (text, max = 60) => {
+    if (text.length <= max) return text;
+    const cut = text.slice(0, max);
+    const lastSpace = cut.lastIndexOf(' ');
+    return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
+};
+
+// початкові події афіші (зберігаються в пам'яті, у сховище потрапляють лише через «додати в обране»)
 const INITIAL_EVENTS = [
-    { id: 1, title: 'Симфонічний концерт просто неба', category: 'music', date: dateWithOffset(5) },
-    { id: 2, title: 'Виставка сучасного мистецтва', category: 'art', date: dateWithOffset(-3) },
-    { id: 3, title: 'Театральна вистава "Тіні"', category: 'theater', date: dateWithOffset(0) },
-    { id: 4, title: 'Хор', category: 'music', date: dateWithOffset(12) }
+    { id: 1, name: 'Симфонічний концерт просто неба', category: 'music', date: dateWithOffset(5), location: 'Міський парк' },
+    { id: 2, name: 'Виставка сучасного мистецтва', category: 'art', date: dateWithOffset(-3), location: 'Галерея сучасного мистецтва' },
+    { id: 3, name: 'Театральна вистава "Тіні"', category: 'theater', date: dateWithOffset(0), location: 'Міський драматичний театр' },
+    { id: 4, name: 'Хор', category: 'music', date: dateWithOffset(12), location: 'Концертний зал' }
 ];
 
-const DB_NAME = 'EventsDB';
-const STORE_NAME = 'savedEvents';
-const DB_VERSION = 1;
+// --- модель збереженої події: id, date, name, location ---
 
-// функція залишена виключно для кроку 8 (одноразової міграції)
-function loadFromLocalStorageForMigration() {
+// приводить запис (зокрема зі старого формату з полем title) до моделі id, date, name, location
+function normalizeSavedEvent(raw) {
+    if (!raw || !raw.date) return null;
+    if (typeof raw.id !== 'number' && typeof raw.id !== 'string') return null;
+
+    const name = raw.name ?? raw.title;
+    if (!name) return null;
+
+    return {
+        id: raw.id,
+        date: String(raw.date),
+        name: String(name),
+        location: raw.location ? String(raw.location) : DEFAULT_LOCATION
+    };
+}
+
+// --- localstorage: синхронний доступ, лише рядки ---
+
+// записує масив обраних подій у localStorage через JSON.stringify
+function saveToLocalStorage(items) {
     try {
-        const raw = localStorage.getItem('appItems');
-        return raw ? JSON.parse(raw) : [];
+        localStorage.setItem(LS_KEY, JSON.stringify(items));
     } catch (error) {
-        console.error('пошкоджені дані в localstorage:', error);
+        console.error('Не вдалося записати дані в localStorage:', error);
+    }
+}
+
+// читає масив з localStorage; пошкоджений json не ламає застосунок, а дає порожній список
+function loadFromLocalStorage() {
+    try {
+        const raw = localStorage.getItem(LS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.map(normalizeSavedEvent).filter(Boolean) : [];
+    } catch (error) {
+        console.error('Пошкоджені дані в localStorage:', error);
         return [];
     }
 }
 
-// реалізація opendb з обробкою onupgradeneeded
+// --- indexeddb : асинхронний доступ через транзакції ---
+
+// відкриває базу; onupgradeneeded створює об'єктне сховище лише при першому запуску (версія 1)
 function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        if (!window.indexedDB) {
+            reject(new Error('Браузер не підтримує IndexedDB.'));
+            return;
+        }
+
+        let request;
+        try {
+            request = indexedDB.open(DB_NAME, DB_VERSION);
+        } catch (error) {
+            reject(new Error('IndexedDB недоступна (можливо, приватний режим браузера).'));
+            return;
+        }
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            // створюємо об'єктне сховище (аналог таблиці) з первинним ключем 'id'
+            // створюємо сховище з ключем id, лише якщо його ще немає
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });
             }
         };
 
         request.onsuccess = () => resolve(request.result);
-
-        // обробка помилки доступу до бази
-        request.onerror = () => {
-            reject(new Error('помилка доступу до indexeddb (можливо, приватний режим браузера).'));
-        };
+        request.onerror = () => reject(new Error('Не вдалося відкрити IndexedDB (можливо, приватний режим браузера).'));
     });
 }
 
-// crud - додавання або оновлення (через put в readwrite транзакції)
+// додає запис або оновлює наявний з тим самим id (put у транзакції readwrite)
 async function addItem(item) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.put(item);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.objectStore(STORE_NAME).put(item);
+        tx.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        tx.onerror = (event) => reject(event.target.error);
+        tx.onabort = () => {
+            db.close();
+            reject(tx.error);
+        };
     });
 }
 
-// crud - видалення 
+// оновлення запису теж виконується через put, тому використовуємо addItem
+async function updateItem(item) {
+    return addItem(item);
+}
+
+// видаляє запис за ключем id (транзакція readwrite)
 async function deleteItem(id) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.delete(id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        tx.onerror = (event) => reject(event.target.error);
+        tx.onabort = () => {
+            db.close();
+            reject(tx.error);
+        };
     });
 }
 
-// crud - читання всіх записів (readonly)
+// повертає масив усіх записів сховища (транзакція readonly)
 async function getAllItems() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
-        const store = tx.objectStore(STORE_NAME);
-        const request = store.getAll();
+        const request = tx.objectStore(STORE_NAME).getAll();
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(tx.error);
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => db.close();
+        tx.onabort = () => db.close();
     });
 }
 
+// одноразова міграція (крок 8): переносимо дані з localStorage, лише якщо сховище порожнє
+async function migrateFromLocalStorage() {
+    if (localStorage.getItem(MIGRATION_FLAG_KEY) === 'true') return;
+
+    const existingItems = await getAllItems();
+    const oldItems = loadFromLocalStorage();
+
+    if (existingItems.length === 0 && oldItems.length > 0) {
+        for (const oldItem of oldItems) {
+            await addItem(oldItem);
+        }
+    }
+
+    // прапорець ставимо після перевірки, щоб міграція не повторювалася при наступних запусках
+    localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
+}
+
+// --- компоненти ---
 
 const EventDateMixin = {
     props: {
@@ -142,17 +230,20 @@ const EventDateMixin = {
     }
 };
 
+// картка події в афіші з кнопкою «додати в обране» (зберегти в indexeddb / прибрати зі збережених)
 const EventCard = {
     mixins: [EventDateMixin],
     props: {
         eventId: { type: [Number, String], required: true },
-        title: { type: String, required: true },
+        name: { type: String, required: true },
         category: { type: String, required: true },
         categoryLabel: String,
+        location: { type: String, default: '' },
         engName: String,
-        selected: { type: Boolean, default: false }
+        selected: { type: Boolean, default: false },
+        saved: { type: Boolean, default: false }
     },
-    emits: ['select-event', 'delete-event'],
+    emits: ['select-event', 'toggle-favorite'],
     template: `
         <article
             :class="['event-card', 'event-card-' + category, { 'event-card-selected': selected }]"
@@ -161,24 +252,72 @@ const EventCard = {
             role="button"
             :aria-pressed="selected"
             @click="select"
-            @keydown.enter.prevent="select"
-            @keydown.space.prevent="select">
-            
-            <button class="delete-btn" @click.stop="$emit('delete-event', eventId)" title="Видалити зі збережених">×</button>
+            @keydown.enter.self.prevent="select"
+            @keydown.space.self.prevent="select">
+
             <p :class="['badge', 'badge-' + category]">{{ categoryLabel || category }}</p>
-            <h3 :title="title">{{ shortenedTitle }}</h3>
+            <h3 :title="name">{{ shortenedName }}</h3>
             <p v-if="engName" class="event-eng-name">{{ engName }}</p>
             <p class="event-date">{{ formattedDate }}</p>
+            <p v-if="location" class="event-location">📍 {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
+            <button
+                type="button"
+                class="favorite-btn"
+                :class="{ 'favorite-btn-active': saved }"
+                @click.stop="$emit('toggle-favorite', eventId)">
+                {{ saved ? '★ Прибрати з обраного' : '☆ Додати в обране' }}
+            </button>
         </article>
     `,
     computed: {
-        shortenedTitle() {
-            const max = 60;
-            if (this.title.length <= max) return this.title;
-            const cut = this.title.slice(0, max);
-            const lastSpace = cut.lastIndexOf(' ');
-            return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
+        shortenedName() {
+            return shortenText(this.name);
+        }
+    },
+    methods: {
+        select() {
+            this.$emit('select-event', this.eventId);
+        }
+    }
+};
+
+// картка збереженої події (дані читаються зі сховища) з кнопкою видалення
+const SavedCard = {
+    mixins: [EventDateMixin],
+    props: {
+        eventId: { type: [Number, String], required: true },
+        name: { type: String, required: true },
+        location: { type: String, default: '' },
+        selected: { type: Boolean, default: false }
+    },
+    emits: ['select-event', 'remove-favorite'],
+    template: `
+        <article
+            :class="['event-card', 'event-card-saved', { 'event-card-selected': selected }]"
+            tabindex="0"
+            role="button"
+            :aria-pressed="selected"
+            @click="select"
+            @keydown.enter.self.prevent="select"
+            @keydown.space.self.prevent="select">
+
+            <p class="badge badge-saved">★ Обране</p>
+            <h3 :title="name">{{ shortenedName }}</h3>
+            <p class="event-date">{{ formattedDate }}</p>
+            <p v-if="location" class="event-location">📍 {{ location }}</p>
+            <p class="days-until" :class="daysClass">{{ daysText }}</p>
+            <button
+                type="button"
+                class="favorite-btn favorite-btn-remove"
+                @click.stop="$emit('remove-favorite', eventId)">
+                Видалити з обраних
+            </button>
+        </article>
+    `,
+    computed: {
+        shortenedName() {
+            return shortenText(this.name);
         }
     },
     methods: {
@@ -191,24 +330,29 @@ const EventCard = {
 const EventDetails = {
     mixins: [EventDateMixin],
     props: {
-        title: { type: String, required: true },
+        name: { type: String, required: true },
         categoryLabel: String,
+        location: { type: String, default: '' },
         engName: String
     },
     template: `
         <div class="details-body">
-            <h3 class="details-title">{{ title }}</h3>
+            <h3 class="details-title">{{ name }}</h3>
             <p v-if="engName" class="event-eng-name">{{ engName }}</p>
-            <p><strong>Категорія:</strong> {{ categoryLabel }}</p>
+            <p v-if="categoryLabel"><strong>Категорія:</strong> {{ categoryLabel }}</p>
             <p><strong>Дата:</strong> {{ formattedDate }}</p>
+            <p v-if="location"><strong>Місце:</strong> {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
         </div>
     `
 };
 
+// --- головний застосунок ---
+
 const app = Vue.createApp({
     components: {
         'event-card': EventCard,
+        'saved-card': SavedCard,
         'event-details': EventDetails
     },
     setup() {
@@ -219,9 +363,13 @@ const app = Vue.createApp({
     },
     data() {
         return {
-            events: [],
+            events: [...INITIAL_EVENTS],
+            savedEvents: [],
+            useLocalFallback: false,
+            storageNotice: '',
+            storageError: '',
             currentFilter: 'all',
-            newEvent: { title: '', category: '', date: '' },
+            newEvent: { name: '', location: '', category: '', date: '' },
             selectedId: null,
             apiStatusMessage: '',
             apiStatusClass: '',
@@ -229,32 +377,19 @@ const app = Vue.createApp({
             nextId: Date.now()
         };
     },
-    // переведення рендеру на дані з indexeddb
+    // джерело списку обраних подій - indexeddb (крок 9)
     async mounted() {
         try {
-            // крок 8: одноразова міграція старих даних з localstorage
-            const isMigrated = localStorage.getItem('migrated');
-
-            if (!isMigrated) {
-                const oldItems = loadFromLocalStorageForMigration();
-                const itemsToMigrate = oldItems.length > 0 ? oldItems : INITIAL_EVENTS;
-
-                for (const item of itemsToMigrate) {
-                    await addItem(item);
-                }
-                // ставимо прапорець, щоб більше не переносити дані
-                localStorage.setItem('migrated', 'true');
-            }
-
-            // отримуємо всі дані з асинхронної бази для відображення
-            this.events = await getAllItems();
-
+            await migrateFromLocalStorage();
+            this.savedEvents = await getAllItems();
+            // дзеркальна копія в localStorage: резерв на випадок недоступності indexeddb
+            saveToLocalStorage(this.savedEvents);
         } catch (error) {
-            console.error(error);
-            this.apiStatusClass = 'status-error';
-            this.apiStatusMessage = error.message;
-            // фолбек, якщо indexeddb недоступна
-            this.events = loadFromLocalStorageForMigration();
+            console.error('Помилка роботи з IndexedDB:', error);
+            // крок 11: зрозуміле повідомлення і резервний режим на localStorage
+            this.useLocalFallback = true;
+            this.savedEvents = loadFromLocalStorage();
+            this.storageNotice = 'Не вдалося отримати доступ до IndexedDB (можливо, у браузері увімкнено приватний режим). Обрані події зберігаються в localStorage.';
         }
     },
     computed: {
@@ -265,42 +400,92 @@ const app = Vue.createApp({
             }
             return [...result].sort((a, b) => a.date.localeCompare(b.date));
         },
+        sortedSavedEvents() {
+            return [...this.savedEvents].sort((a, b) => a.date.localeCompare(b.date));
+        },
         selectedEvent() {
-            return this.events.find(e => e.id === this.selectedId) || null;
+            return this.events.find(e => e.id === this.selectedId)
+                || this.savedEvents.find(e => e.id === this.selectedId)
+                || null;
+        },
+        storageName() {
+            return this.useLocalFallback ? 'localStorage' : 'IndexedDB';
         }
     },
     methods: {
-        async addEvent() {
-            if (this.newEvent.title.length < 3) return;
+        isSaved(id) {
+            return this.savedEvents.some(e => e.id === id);
+        },
 
-            const newEv = {
+        // додає подію з форми до афіші (у пам'яті); у сховище вона потрапляє через «додати в обране»
+        addEvent() {
+            if (this.newEvent.name.length < 3 || this.newEvent.location.length < 2) return;
+
+            this.events.push({
                 id: this.nextId++,
-                title: this.newEvent.title,
+                name: this.newEvent.name,
+                location: this.newEvent.location,
                 category: this.newEvent.category,
                 date: this.newEvent.date
-            };
+            });
 
-            try {
-                // зберігаємо в базу і відразу оновлюємо стан для відображення
-                await addItem(newEv);
-                this.events.push(newEv);
-            } catch (e) {
-                console.error('помилка збереження в базу:', e);
-            }
-
-            this.newEvent.title = '';
+            this.newEvent.name = '';
+            this.newEvent.location = '';
             this.newEvent.category = '';
             this.newEvent.date = '';
         },
 
-        async removeEvent(id) {
+        toggleFavorite(id) {
+            return this.isSaved(id) ? this.removeFavorite(id) : this.addFavorite(id);
+        },
+
+        // запис події в сховище (create) і повторне читання списку зі сховища
+        async addFavorite(id) {
+            const source = this.events.find(e => e.id === id);
+            if (!source || this.isSaved(id)) return;
+
+            // у сховище потрапляють лише поля варіанта: id, date, name, location
+            const record = {
+                id: source.id,
+                date: source.date,
+                name: source.name,
+                location: source.location
+            };
+
             try {
-                // видаляємо запис з бази і фільтруємо локальний стан
-                await deleteItem(id);
-                this.events = this.events.filter(e => e.id !== id);
-                if (this.selectedId === id) this.selectedId = null;
-            } catch (e) {
-                console.error('помилка видалення з бази:', e);
+                if (this.useLocalFallback) {
+                    this.savedEvents = [...this.savedEvents, record];
+                } else {
+                    await addItem(record);
+                    this.savedEvents = await getAllItems();
+                }
+                saveToLocalStorage(this.savedEvents);
+                this.storageError = '';
+            } catch (error) {
+                console.error('Помилка збереження події:', error);
+                this.storageError = 'Не вдалося додати подію в обране. Спробуйте ще раз.';
+            }
+        },
+
+        // видалення події зі збережених (delete) і повторне читання списку зі сховища
+        async removeFavorite(id) {
+            try {
+                if (this.useLocalFallback) {
+                    this.savedEvents = this.savedEvents.filter(e => e.id !== id);
+                } else {
+                    await deleteItem(id);
+                    this.savedEvents = await getAllItems();
+                }
+                saveToLocalStorage(this.savedEvents);
+                this.storageError = '';
+
+                // знімаємо вибір, якщо подія більше ніде не відображається
+                if (this.selectedId === id && !this.events.some(e => e.id === id)) {
+                    this.selectedId = null;
+                }
+            } catch (error) {
+                console.error('Помилка видалення події:', error);
+                this.storageError = 'Не вдалося видалити подію з обраного. Спробуйте ще раз.';
             }
         },
 
@@ -353,20 +538,16 @@ const app = Vue.createApp({
 
                 const apiEvents = data.map((holiday, index) => ({
                     id: 'api-' + index + '-' + holiday.date,
-                    title: holiday.localName,
+                    name: holiday.localName,
                     engName: holiday.name,
                     category: 'holiday',
+                    location: 'Україна',
                     date: holiday.date,
                     isApi: true
                 }));
 
-                // зберігаємо отримані з api події безпосередньо в indexeddb
-                for (const ev of apiEvents) {
-                    await addItem(ev);
-                }
-
-                // оновлюємо список після crud-операції, витягуючи свіжі дані
-                this.events = await getAllItems();
+                // події з api потрапляють в афішу (пам'ять); у indexeddb їх записує лише кнопка «додати в обране»
+                this.events = [...this.events.filter(e => !e.isApi), ...apiEvents];
 
                 this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
                 this.apiStatusClass = 'status-success';

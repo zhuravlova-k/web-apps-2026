@@ -91,6 +91,7 @@ h3 {
 
 .filters-section,
 .add-event-section,
+.saved-section,
 .details-panel {
     background-color: #ffffff;
     padding: 1.5rem;
@@ -101,6 +102,10 @@ h3 {
 
 .filters-section {
     border-top: 4px solid #6a040f;
+}
+
+.saved-section {
+    border-top: 4px solid #f1c40f;
 }
 
 .filter-controls {
@@ -171,7 +176,6 @@ select {
 }
 
 .event-card {
-    position: relative; /* необхідно для абсолютного позиціонування кнопки видалення */
     background-color: #ffffff;
     padding: 20px;
     border-radius: 8px;
@@ -205,6 +209,7 @@ select {
 .event-card-art { border-left: 4px solid #d00000; }
 .event-card-theater { border-left: 4px solid #6a040f; }
 .event-card-holiday { border-left: 4px solid #2a9d8f; }
+.event-card-saved { border-left: 4px solid #370617; }
 
 .badge {
     display: inline-block;
@@ -220,6 +225,7 @@ select {
 .badge-art { background-color: #d00000; }
 .badge-theater { background-color: #6a040f; }
 .badge-holiday { background-color: #2a9d8f; }
+.badge-saved { background-color: #370617; }
 
 .event-date {
     font-size: 18px;
@@ -234,6 +240,13 @@ select {
     font-style: italic;
     margin-top: -5px;
     margin-bottom: 10px;
+}
+
+/* місце проведення події */
+.event-location {
+    font-size: 14px;
+    color: #555;
+    margin: 4px 0 0 0;
 }
 
 /* похідне значення: кількість днів до події */
@@ -254,6 +267,11 @@ select {
 }
 
 .details-placeholder {
+    color: #666;
+    font-style: italic;
+}
+
+.empty-msg {
     color: #666;
     font-style: italic;
 }
@@ -287,7 +305,50 @@ select {
 .status-msg { font-weight: bold; }
 .status-loading { color: #023e8a; }
 .status-success { color: #1b6b60; }
+.status-warning { color: #8a4b00; }
 .status-error { color: #d00000; }
+
+/* кнопка «додати в обране» / «видалити з обраних» на картці */
+.favorite-btn {
+    margin-top: 12px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #370617;
+    background-color: #ffffff;
+    border: 2px solid #6a040f;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.favorite-btn:hover {
+    background-color: #fbe9e7;
+}
+
+.favorite-btn-active {
+    background-color: #6a040f;
+    color: #ffffff;
+}
+
+.favorite-btn-active:hover {
+    background-color: #370617;
+}
+
+.favorite-btn-remove {
+    border-color: #d00000;
+    color: #d00000;
+}
+
+.favorite-btn-remove:hover {
+    background-color: #d00000;
+    color: #ffffff;
+}
+
+.favorite-btn:focus-visible {
+    outline: 3px solid #023e8a;
+    outline-offset: 2px;
+}
 
 footer {
     text-align: center;
@@ -356,33 +417,4 @@ footer {
         position: sticky;
         top: 16px;
     }
-}
-
-/* кнопка видалення картки */
-.delete-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #ff4d4f;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s, background-color 0.2s;
-}
-
-.event-card:hover .delete-btn {
-    opacity: 1;
-}
-
-.delete-btn:hover {
-    background: #d9363e;
 }
