@@ -26,7 +26,6 @@ const dateWithOffset = (offsetDays) => {
     return toLocalISO(d);
 };
 
-// базові стартові дані 
 const INITIAL_EVENTS = [
     { id: 1, title: 'Симфонічний концерт просто неба', category: 'music', date: dateWithOffset(5) },
     { id: 2, title: 'Виставка сучасного мистецтва', category: 'art', date: dateWithOffset(-3) },
@@ -34,28 +33,77 @@ const INITIAL_EVENTS = [
     { id: 4, title: 'Хор', category: 'music', date: dateWithOffset(12) }
 ];
 
-const STORAGE_KEY = 'appItems';
+const DB_NAME = 'EventsDB';
+const STORE_NAME = 'savedEvents';
+const DB_VERSION = 1;
 
-// крок 2: функція збереження в localstorage (з серіалізацією json)
-function saveToLocalStorage(items) {
+// функція залишена виключно для кроку 8 (одноразової міграції)
+function loadFromLocalStorageForMigration() {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        const raw = localStorage.getItem('appItems');
+        return raw ? JSON.parse(raw) : [];
     } catch (error) {
-        console.error('помилка при збереженні в localstorage:', error);
+        console.error('пошкоджені дані в localstorage:', error);
+        return [];
     }
 }
 
-// функція завантаження з localstorage (з обробкою пошкоджених даних)
-function loadFromLocalStorage() {
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        // якщо даних немає, повертаємо початковий стартовий масив
-        return raw ? JSON.parse(raw) : [...INITIAL_EVENTS];
-    } catch (error) {
-        // захист від падіння додатку при пошкодженому json
-        console.error('пошкоджені дані в localstorage:', error);
-        return [...INITIAL_EVENTS];
-    }
+// реалізація opendb з обробкою onupgradeneeded
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            // створюємо об'єктне сховище (аналог таблиці) з первинним ключем 'id'
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+
+        request.onsuccess = () => resolve(request.result);
+
+        // обробка помилки доступу до бази
+        request.onerror = () => {
+            reject(new Error('помилка доступу до indexeddb (можливо, приватний режим браузера).'));
+        };
+    });
+}
+
+// crud - додавання або оновлення (через put в readwrite транзакції)
+async function addItem(item) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put(item);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// crud - видалення 
+async function deleteItem(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+// crud - читання всіх записів (readonly)
+async function getAllItems() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(tx.error);
+    });
 }
 
 
@@ -104,7 +152,6 @@ const EventCard = {
         engName: String,
         selected: { type: Boolean, default: false }
     },
-    // додано подію видалення для повноцінного crud
     emits: ['select-event', 'delete-event'],
     template: `
         <article
@@ -117,13 +164,9 @@ const EventCard = {
             @keydown.enter.prevent="select"
             @keydown.space.prevent="select">
             
-            <!-- кнопка видалення картки (stoppropagation, щоб не викликати select) -->
-            <button class="delete-btn" @click.stop="$emit('delete-event', eventId)" title="Видалити подію">×</button>
-
+            <button class="delete-btn" @click.stop="$emit('delete-event', eventId)" title="Видалити зі збережених">×</button>
             <p :class="['badge', 'badge-' + category]">{{ categoryLabel || category }}</p>
-
             <h3 :title="title">{{ shortenedTitle }}</h3>
-
             <p v-if="engName" class="event-eng-name">{{ engName }}</p>
             <p class="event-date">{{ formattedDate }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
@@ -183,20 +226,35 @@ const app = Vue.createApp({
             apiStatusMessage: '',
             apiStatusClass: '',
             isApiLoading: false,
-            nextId: Date.now() // унікальні id через timestamp
+            nextId: Date.now()
         };
     },
-    mounted() {
-        // при старті додатку завантажуємо дані з localstorage
-        this.events = loadFromLocalStorage();
-    },
-    watch: {
-        // реактивно прив'язуємо збереження до будь-якої зміни масиву events
-        events: {
-            handler(newEvents) {
-                saveToLocalStorage(newEvents);
-            },
-            deep: true // відстежує глибокі зміни об'єктів всередині масиву
+    // переведення рендеру на дані з indexeddb
+    async mounted() {
+        try {
+            // крок 8: одноразова міграція старих даних з localstorage
+            const isMigrated = localStorage.getItem('migrated');
+
+            if (!isMigrated) {
+                const oldItems = loadFromLocalStorageForMigration();
+                const itemsToMigrate = oldItems.length > 0 ? oldItems : INITIAL_EVENTS;
+
+                for (const item of itemsToMigrate) {
+                    await addItem(item);
+                }
+                // ставимо прапорець, щоб більше не переносити дані
+                localStorage.setItem('migrated', 'true');
+            }
+
+            // отримуємо всі дані з асинхронної бази для відображення
+            this.events = await getAllItems();
+
+        } catch (error) {
+            console.error(error);
+            this.apiStatusClass = 'status-error';
+            this.apiStatusMessage = error.message;
+            // фолбек, якщо indexeddb недоступна
+            this.events = loadFromLocalStorageForMigration();
         }
     },
     computed: {
@@ -212,26 +270,38 @@ const app = Vue.createApp({
         }
     },
     methods: {
-        addEvent() {
+        async addEvent() {
             if (this.newEvent.title.length < 3) return;
 
-            this.events.push({
+            const newEv = {
                 id: this.nextId++,
                 title: this.newEvent.title,
                 category: this.newEvent.category,
                 date: this.newEvent.date
-            });
+            };
+
+            try {
+                // зберігаємо в базу і відразу оновлюємо стан для відображення
+                await addItem(newEv);
+                this.events.push(newEv);
+            } catch (e) {
+                console.error('помилка збереження в базу:', e);
+            }
 
             this.newEvent.title = '';
             this.newEvent.category = '';
             this.newEvent.date = '';
-            // завдяки watch, saveToLocalStorage викликається автоматично
         },
 
-        // видалення події зі стану (і автоматично з localstorage)
-        removeEvent(id) {
-            this.events = this.events.filter(e => e.id !== id);
-            if (this.selectedId === id) this.selectedId = null;
+        async removeEvent(id) {
+            try {
+                // видаляємо запис з бази і фільтруємо локальний стан
+                await deleteItem(id);
+                this.events = this.events.filter(e => e.id !== id);
+                if (this.selectedId === id) this.selectedId = null;
+            } catch (e) {
+                console.error('помилка видалення з бази:', e);
+            }
         },
 
         handleSelectEvent(id) {
@@ -290,8 +360,13 @@ const app = Vue.createApp({
                     isApi: true
                 }));
 
-                // оновлюємо стан, watch збереже нові дані в localstorage
-                this.events = this.events.filter(e => !e.isApi).concat(apiEvents);
+                // зберігаємо отримані з api події безпосередньо в indexeddb
+                for (const ev of apiEvents) {
+                    await addItem(ev);
+                }
+
+                // оновлюємо список після crud-операції, витягуючи свіжі дані
+                this.events = await getAllItems();
 
                 this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
                 this.apiStatusClass = 'status-success';
