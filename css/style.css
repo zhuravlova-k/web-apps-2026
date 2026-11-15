@@ -40,6 +40,7 @@ h3 {
     color: #03071e;
 }
 
+/* ---------- Шапка ---------- */
 .site-header {
     background-color: #6a040f;
 }
@@ -80,6 +81,7 @@ h3 {
     color: #fff;
 }
 
+/* ---------- Макет ---------- */
 .layout-wrapper {
     max-width: 1000px;
     margin: 2rem auto;
@@ -89,7 +91,9 @@ h3 {
     gap: 16px;
 }
 
-.filters-section, .add-event-section, .details-panel {
+.filters-section,
+.add-event-section,
+.details-panel {
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
@@ -101,22 +105,40 @@ h3 {
     border-top: 4px solid #6a040f;
 }
 
+/* ---------- Фільтр ---------- */
 .filter-controls {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-input[type="text"], input[type="date"], select {
-    padding: 8px 12px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    width: 100%;
+.filter-label {
+    font-weight: 600;
 }
 
-.form-group {
-    margin-bottom: 15px;
+.filter-btn {
+    padding: 8px 16px;
+    font-size: 16px;
+    color: #370617;
+    background-color: #ffffff;
+    border: 2px solid #6a040f;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.filter-btn:hover {
+    background-color: #fbe9e7;
+}
+
+.filter-btn.active {
+    background-color: #6a040f;
+    color: #ffffff;
+}
+
+.filter-btn:focus-visible {
+    outline: 3px solid #023e8a;
+    outline-offset: 2px;
 }
 
 #events-count {
@@ -125,6 +147,28 @@ input[type="text"], input[type="date"], select {
     color: #6a040f;
 }
 
+/* ---------- Форма ---------- */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+input[type="text"],
+input[type="date"],
+select {
+    padding: 8px 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+}
+
+/* ---------- Картки ---------- */
 .cards {
     display: grid;
     grid-template-columns: 1fr;
@@ -140,12 +184,25 @@ input[type="text"], input[type="date"], select {
     flex-direction: column;
     align-items: flex-start;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
 
 .event-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* вибрана картка */
+.event-card-selected {
+    background-color: #fff6f3;
+    outline: 2px solid #6a040f;
+    outline-offset: 2px;
+}
+
+/* фокус з клавіатури (оголошено після .event-card-selected, тому має пріоритет) */
+.event-card:focus-visible {
+    outline: 3px solid #023e8a;
+    outline-offset: 2px;
 }
 
 .event-card-music { border-left: 4px solid #023e8a; }
@@ -183,17 +240,30 @@ input[type="text"], input[type="date"], select {
     margin-bottom: 10px;
 }
 
+/* похідне значення: кількість днів до події */
 .days-until {
     font-size: 14px;
     font-weight: 500;
     margin-top: 10px;
     margin-bottom: 0;
 }
+
 .days-future { color: #555; }
 .days-today { color: #2a9d8f; font-weight: bold; }
 .days-past { color: #999; }
 
-/* Кнопки та API */
+/* ---------- Панель деталей ---------- */
+.details-title {
+    margin-top: 0;
+    color: #6a040f;
+}
+
+.details-placeholder {
+    color: #666;
+    font-style: italic;
+}
+
+/* ---------- Кнопки та API ---------- */
 .submit-btn {
     background-color: #370617;
     color: #fff;
@@ -204,12 +274,15 @@ input[type="text"], input[type="date"], select {
     cursor: pointer;
 }
 
-.submit-btn:hover { background-color: #6a040f; }
+.submit-btn:hover {
+    background-color: #6a040f;
+}
 
 .api-controls {
     margin-bottom: 20px;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 15px;
 }
 
@@ -222,6 +295,7 @@ input[type="text"], input[type="date"], select {
 .status-success { color: #1b6b60; }
 .status-error { color: #d00000; }
 
+/* ---------- Футер ---------- */
 footer {
     text-align: center;
     padding: 2rem;
@@ -231,15 +305,64 @@ footer {
     font-size: 16px;
 }
 
+/* ---------- Адаптивність ---------- */
 @media (min-width: 600px) {
-    .layout-wrapper { padding: 0 30px; }
-    .header-inner { padding: 1.5rem 30px; flex-direction: row; justify-content: space-between; }
-    .filter-controls { flex-direction: row; align-items: center; flex-wrap: wrap; }
-    .cards { grid-template-columns: repeat(2, 1fr); }
+    .layout-wrapper {
+        padding: 0 30px;
+    }
+
+    .header-inner {
+        padding: 1.5rem 30px;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .header-inner nav {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .filter-controls {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (min-width: 1024px) {
-    .layout-wrapper { max-width: 1400px; padding: 0 40px; gap: 32px; display: grid; grid-template-columns: 2fr 1fr; align-items: start; }
-    .header-inner { max-width: 1400px; padding: 2.5rem 40px; }
-    .cards { grid-template-columns: repeat(3, 1fr); }
+    .layout-wrapper {
+        max-width: 1400px;
+        padding: 0 40px;
+        gap: 32px;
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        align-items: start;
+    }
+
+    .header-inner {
+        max-width: 1400px;
+        padding: 2.5rem 40px;
+    }
+
+    .header-inner h1 {
+        font-size: 36px;
+    }
+
+    .header-inner nav {
+        gap: 24px;
+    }
+
+    .cards {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* панель деталей залишається на виду під час прокрутки списку */
+    .details-panel {
+        position: sticky;
+        top: 16px;
+    }
 }

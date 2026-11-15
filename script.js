@@ -1,10 +1,14 @@
 // --- КРОК 1: Обґрунтування вибору фреймворку ---
-// Обрано фреймворк Vue 3 (CDN), оскільки він дозволяє інтегрувати реактивність 
-// і компоненти у наявний HTML без складної конфігурації збірки.
+// Обрано Vue 3 (глобальна збірка через CDN): він дає реактивність і компоненти
+// у наявному HTML без збірки й Babel (на відміну від React + JSX).
 
-const API_YEAR = new Date().getFullYear(); // Динамічний рік
+const API_YEAR = new Date().getFullYear();
 const API_COUNTRY = 'UA';
 const API_URL = `https://date.nager.at/api/v3/PublicHolidays/${API_YEAR}/${API_COUNTRY}`;
+
+// довідники не змінюються, тому це звичайні константи, а не реактивний стан.
+const FILTER_CATEGORIES = { all: 'Усі', music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свята' };
+const FORM_CATEGORIES = { music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свято' };
 
 class ApiError extends Error {
     constructor(message, { status, cause } = {}) {
@@ -14,85 +18,152 @@ class ApiError extends Error {
     }
 }
 
-const today = new Date();
-const formatDateToISO = (dateObj) => dateObj.toISOString().split('T')[0];
+// --- Демо-дані відносно поточної дати ---
+// Рядок YYYY-MM-DD збираємо з ЛОКАЛЬНИХ частин дати (toISOString віддав би UTC-дату,
+// яка вночі за Києвом відрізняється від локальної).
+const toLocalISO = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-const dateFuture = new Date(today); dateFuture.setDate(today.getDate() + 5);
-const dateToday = new Date(today);
-const datePast = new Date(today); datePast.setDate(today.getDate() - 3);
+const dateWithOffset = (offsetDays) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return toLocalISO(d);
+};
 
-const EventCard = {
+// --- Спільна логіка дати для EventCard і EventDetails ---
+// Міксин залежить лише від власного prop `date`, а не від глобальних змінних.
+// Рядок 'YYYY-MM-DD' розбираємо вручну (split), без new Date(string), щоб
+// результат не залежав від часового поясу користувача.
+const EventDateMixin = {
     props: {
-        id: [Number, String],
-        title: String,
-        category: String,
-        categoryLabel: String,
-        date: String,
-        engName: String
+        date: { type: String, required: true }
     },
-    emits: ['select-event'],
-    template: `
-        <article :class="['event-card', 'event-card-' + category]" :data-category="category" @click="$emit('select-event', id)">
-            <p :class="['badge', 'badge-' + category]">{{ categoryLabel || category }}</p>
-            
-            <!-- Повний текст у підказці, обрізаний - візуально -->
-            <h3 :title="title">{{ shortenedTitle }}</h3>
-            
-            <p v-if="engName" class="event-eng-name">{{ engName }}</p>
-            <p class="event-date">{{ formattedDate }}</p>
-            
-            <!-- Похідне значення: обчислені дні до події -->
-            <p class="days-until">
-                <span v-if="daysUntil > 0" class="days-future">⏳ Залишилося днів: {{ daysUntil }}</span>
-                <span v-else-if="daysUntil === 0" class="days-today">🎉 Подія сьогодні!</span>
-                <span v-else class="days-past">🕒 Подія вже минула</span>
-            </p>
-        </article>
-    `,
     computed: {
-        shortenedTitle() {
-            return this.title.length > 25 ? this.title.slice(0, 25).trimEnd() + '…' : this.title;
+        // Дата події як UTC-північ (рік/місяць/день беруться прямо з рядка)
+        eventDateUTC() {
+            const [y, m, d] = this.date.split('-').map(Number);
+            return Date.UTC(y, m - 1, d);
         },
         formattedDate() {
-            return new Date(this.date).toLocaleDateString('uk-UA', {
+            return new Date(this.eventDateUTC).toLocaleDateString('uk-UA', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
                 timeZone: 'UTC'
             });
         },
+        // кількість днів до події
         daysUntil() {
-            const eventD = new Date(this.date);
-            const currentD = new Date();
-
-            // використовуємо UTC для уникнення багів із часовими поясами та переходом на зимовий час
-            const utcEvent = Date.UTC(eventD.getFullYear(), eventD.getMonth(), eventD.getDate());
-            const utcCurrent = Date.UTC(currentD.getFullYear(), currentD.getMonth(), currentD.getDate());
-
-            // використовуємо Math.round для безпеки
-            return Math.round((utcEvent - utcCurrent) / (1000 * 60 * 60 * 24));
+            const now = new Date();
+            // Сьогодні: локальні геттери (це календарний день користувача), далі в UTC
+            const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+            // Math.round, бо різниця — ціле число днів у UTC, без впливу переходу на зимовий час
+            return Math.round((this.eventDateUTC - todayUTC) / (24 * 60 * 60 * 1000));
+        },
+        daysClass() {
+            if (this.daysUntil > 0) return 'days-future';
+            if (this.daysUntil === 0) return 'days-today';
+            return 'days-past';
+        },
+        daysText() {
+            if (this.daysUntil > 0) return `⏳ Залишилося днів: ${this.daysUntil}`;
+            if (this.daysUntil === 0) return '🎉 Подія сьогодні!';
+            return '🕒 Подія вже минула';
         }
     }
 };
 
+// --- Компонент картки події (props → рендер, $emit → батьківський компонент) ---
+const EventCard = {
+    mixins: [EventDateMixin],
+    props: {
+        eventId: { type: [Number, String], required: true },
+        title: { type: String, required: true },
+        category: { type: String, required: true },
+        categoryLabel: String,
+        engName: String,
+        selected: { type: Boolean, default: false }
+    },
+    emits: ['select-event'],
+    template: `
+        <article
+            :class="['event-card', 'event-card-' + category, { 'event-card-selected': selected }]"
+            :data-category="category"
+            tabindex="0"
+            role="button"
+            :aria-pressed="selected"
+            @click="select"
+            @keydown.enter.prevent="select"
+            @keydown.space.prevent="select">
+            <p :class="['badge', 'badge-' + category]">{{ categoryLabel || category }}</p>
+
+            <!-- Повний текст у підказці, скорочений (по межі слова) — візуально -->
+            <h3 :title="title">{{ shortenedTitle }}</h3>
+
+            <p v-if="engName" class="event-eng-name">{{ engName }}</p>
+            <p class="event-date">{{ formattedDate }}</p>
+            <p class="days-until" :class="daysClass">{{ daysText }}</p>
+        </article>
+    `,
+    computed: {
+        shortenedTitle() {
+            const max = 60;
+            if (this.title.length <= max) return this.title;
+            const cut = this.title.slice(0, max);
+            const lastSpace = cut.lastIndexOf(' ');
+            return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
+        }
+    },
+    methods: {
+        select() {
+            this.$emit('select-event', this.eventId);
+        }
+    }
+};
+
+// --- Компонент панелі «Деталі обраної події» ---
+const EventDetails = {
+    mixins: [EventDateMixin],
+    props: {
+        title: { type: String, required: true },
+        categoryLabel: String,
+        engName: String
+    },
+    template: `
+        <div class="details-body">
+            <h3 class="details-title">{{ title }}</h3>
+            <p v-if="engName" class="event-eng-name">{{ engName }}</p>
+            <p><strong>Категорія:</strong> {{ categoryLabel }}</p>
+            <p><strong>Дата:</strong> {{ formattedDate }}</p>
+            <p class="days-until" :class="daysClass">{{ daysText }}</p>
+        </div>
+    `
+};
+
 const app = Vue.createApp({
     components: {
-        'event-card': EventCard
+        'event-card': EventCard,
+        'event-details': EventDetails
     },
-    // реактивний стан
+    // Константи-довідники віддаємо шаблону через setup(), без реактивності
+    setup() {
+        return {
+            filterCategories: FILTER_CATEGORIES,
+            formCategories: FORM_CATEGORIES
+        };
+    },
+    // Реактивний стан
     data() {
         return {
-            filterCategories: { all: 'Усі', music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свята' },
-            formCategories: { music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свято' },
             events: [
-                { id: 1, title: 'Симфонічний концерт просто неба', category: 'music', date: formatDateToISO(dateFuture) },
-                { id: 2, title: 'Виставка сучасного мистецтва', category: 'art', date: formatDateToISO(datePast) },
-                { id: 3, title: 'Театральна вистава "Тіні"', category: 'theater', date: formatDateToISO(dateToday) },
-                { id: 4, title: 'Хор', category: 'music', date: formatDateToISO(dateFuture) }
+                { id: 1, title: 'Симфонічний концерт просто неба', category: 'music', date: dateWithOffset(5) },
+                { id: 2, title: 'Виставка сучасного мистецтва', category: 'art', date: dateWithOffset(-3) },
+                { id: 3, title: 'Театральна вистава "Тіні"', category: 'theater', date: dateWithOffset(0) },
+                { id: 4, title: 'Хор', category: 'music', date: dateWithOffset(12) }
             ],
             currentFilter: 'all',
             newEvent: { title: '', category: '', date: '' },
-            selectedEvent: null, // Стан для панелі "Обрана подія"
+            selectedId: null, // зберігаємо лише id, сама подія виводиться через computed
             apiStatusMessage: '',
             apiStatusClass: '',
             isApiLoading: false,
@@ -100,12 +171,19 @@ const app = Vue.createApp({
         };
     },
     computed: {
+        // ручну функцію рендера updateRender() (практикум 7: createElement/innerHTML)
+        // видалено. Її замінено шаблоном із v-for, компонентом EventCard і цим computed.
         filteredEvents() {
             let result = this.events;
             if (this.currentFilter !== 'all') {
                 result = result.filter(e => e.category === this.currentFilter);
             }
+            // копія масиву, щоб не мутувати реактивний стан під час сортування
             return [...result].sort((a, b) => a.date.localeCompare(b.date));
+        },
+        // Похідне значення: обрана подія завжди узгоджена з масивом events
+        selectedEvent() {
+            return this.events.find(e => e.id === this.selectedId) || null;
         }
     },
     methods: {
@@ -124,9 +202,17 @@ const app = Vue.createApp({
             this.newEvent.date = '';
         },
 
-        // обробка події $emit від дочірнього компонента
+        // Обробник події $emit від EventCard
         handleSelectEvent(id) {
-            this.selectedEvent = this.events.find(e => e.id === id);
+            this.selectedId = id;
+
+            // На вузьких екранах панель деталей під списком: підкручуємо до неї,
+            // щоб клік мав видимий результат (через ref, без querySelector).
+            if (window.matchMedia('(max-width: 1023px)').matches) {
+                this.$nextTick(() => {
+                    this.$refs.details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+            }
         },
 
         async loadApiData() {
@@ -153,10 +239,16 @@ const app = Vue.createApp({
                 try {
                     data = await response.json();
                 } catch (parseError) {
-                    throw new ApiError('Сервер повернув некоректну відповідь.', { cause: parseError });
+                    throw new ApiError('Сервер повернув некоректну відповідь.', {
+                        status: response.status,
+                        cause: parseError
+                    });
                 }
 
-                if (!Array.isArray(data) || data.length === 0) {
+                if (!Array.isArray(data)) {
+                    throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
+                }
+                if (data.length === 0) {
                     throw new ApiError('Дані про події не знайдено', { status: response.status });
                 }
 
@@ -169,15 +261,18 @@ const app = Vue.createApp({
                     isApi: true
                 }));
 
+                // дедуплікація: старі API-події замінюються новими
                 this.events = this.events.filter(e => !e.isApi).concat(apiEvents);
 
                 this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
                 this.apiStatusClass = 'status-success';
 
             } catch (error) {
-                console.error('Помилка API:', error);
+                console.error(`Помилка завантаження API (статус: ${error.status ?? 'немає'}):`, error);
                 this.apiStatusClass = 'status-error';
-                this.apiStatusMessage = error instanceof ApiError ? error.message : 'Сталася помилка при обробці даних.';
+                this.apiStatusMessage = error instanceof ApiError
+                    ? error.message
+                    : 'Сталася помилка при обробці даних.';
             } finally {
                 this.isApiLoading = false;
             }
