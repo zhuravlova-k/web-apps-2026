@@ -40,7 +40,6 @@ h3 {
     color: #03071e;
 }
 
-/* ---------- Шапка ---------- */
 .site-header {
     background-color: #6a040f;
 }
@@ -81,7 +80,6 @@ h3 {
     color: #fff;
 }
 
-/* ---------- Макет ---------- */
 .layout-wrapper {
     max-width: 1000px;
     margin: 2rem auto;
@@ -105,7 +103,6 @@ h3 {
     border-top: 4px solid #6a040f;
 }
 
-/* ---------- Фільтр ---------- */
 .filter-controls {
     display: flex;
     flex-direction: column;
@@ -147,7 +144,6 @@ h3 {
     color: #6a040f;
 }
 
-/* ---------- Форма ---------- */
 .form-group {
     margin-bottom: 15px;
 }
@@ -168,7 +164,6 @@ select {
     width: 100%;
 }
 
-/* ---------- Картки ---------- */
 .cards {
     display: grid;
     grid-template-columns: 1fr;
@@ -176,6 +171,7 @@ select {
 }
 
 .event-card {
+    position: relative; /* необхідно для абсолютного позиціонування кнопки видалення */
     background-color: #ffffff;
     padding: 20px;
     border-radius: 8px;
@@ -199,7 +195,7 @@ select {
     outline-offset: 2px;
 }
 
-/* фокус з клавіатури (оголошено після .event-card-selected, тому має пріоритет) */
+/* фокус з клавіатури */
 .event-card:focus-visible {
     outline: 3px solid #023e8a;
     outline-offset: 2px;
@@ -252,7 +248,6 @@ select {
 .days-today { color: #2a9d8f; font-weight: bold; }
 .days-past { color: #999; }
 
-/* ---------- Панель деталей ---------- */
 .details-title {
     margin-top: 0;
     color: #6a040f;
@@ -263,7 +258,6 @@ select {
     font-style: italic;
 }
 
-/* ---------- Кнопки та API ---------- */
 .submit-btn {
     background-color: #370617;
     color: #fff;
@@ -295,7 +289,6 @@ select {
 .status-success { color: #1b6b60; }
 .status-error { color: #d00000; }
 
-/* ---------- Футер ---------- */
 footer {
     text-align: center;
     padding: 2rem;
@@ -305,7 +298,6 @@ footer {
     font-size: 16px;
 }
 
-/* ---------- Адаптивність ---------- */
 @media (min-width: 600px) {
     .layout-wrapper {
         padding: 0 30px;
@@ -360,9 +352,37 @@ footer {
         grid-template-columns: repeat(3, 1fr);
     }
 
-    /* панель деталей залишається на виду під час прокрутки списку */
     .details-panel {
         position: sticky;
         top: 16px;
     }
+}
+
+/* кнопка видалення картки */
+.delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.event-card:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    background: #d9363e;
 }

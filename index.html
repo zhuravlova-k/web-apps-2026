@@ -78,10 +78,11 @@
                 </div>
 
                 <div class="cards" id="events-list">
+                    <!-- додано обробник @delete-event для видалення карток -->
                     <event-card v-for="event in filteredEvents" :key="event.id" :event-id="event.id"
                         :title="event.title" :category="event.category" :category-label="formCategories[event.category]"
                         :date="event.date" :eng-name="event.engName" :selected="event.id === selectedId"
-                        @select-event="handleSelectEvent">
+                        @select-event="handleSelectEvent" @delete-event="removeEvent">
                     </event-card>
                 </div>
             </section>
