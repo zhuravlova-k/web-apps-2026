@@ -12,129 +12,34 @@
 </head>
 
 <body>
-    <header class="site-header">
-        <div class="header-inner">
-            <h1>Афіша подій міста</h1>
-            <nav>
-                <a href="#events">Події</a>
-                <a href="#saved-events">Обрані</a>
-                <a href="#selected-event">Обрана подія</a>
-            </nav>
+    <div id="app" v-cloak>
+        <header class="site-header">
+            <div class="header-inner">
+                <h1>Афіша подій міста</h1>
+                <nav>
+                    <!-- лаб 13: hash-based роутинг у меню -->
+                    <a href="#/" :class="{ 'router-link-active': currentRoute === '/' }">Події</a>
+                    <a href="#/saved" :class="{ 'router-link-active': currentRoute === '/saved' }">Обрані</a>
+                </nav>
+            </div>
+        </header>
+
+        <div class="layout-wrapper">
+            <main>
+                <!-- лаб 13: динамічний контейнер для рендеру поточної "сторінки" -->
+                <component :is="currentViewComponent" class="page-view" :events="events" :saved-events="savedEvents"
+                    :form-categories="formCategories" :filter-categories="filterCategories"
+                    :api-status-message="apiStatusMessage" :api-status-class="apiStatusClass"
+                    :is-api-loading="isApiLoading" :route-params="routeParams" @add-event="addEvent"
+                    @toggle-favorite="toggleFavorite" @remove-favorite="removeFavorite" @load-api-data="loadApiData">
+                </component>
+            </main>
         </div>
-    </header>
 
-    <div class="layout-wrapper" id="app" v-cloak>
-        <main>
-            <section id="filters" class="filters-section">
-                <h2>Фільтр за категорією</h2>
-                <div class="filter-controls">
-                    <span class="filter-label">Категорія:</span>
-                    <button v-for="(label, key) in filterCategories" :key="key" type="button" class="filter-btn"
-                        :class="{ active: currentFilter === key }" :aria-pressed="currentFilter === key"
-                        @click="currentFilter = key">
-                        {{ label }}
-                    </button>
-                </div>
-                <p id="events-count" class="status-msg">Знайдено подій: {{ filteredEvents.length }}</p>
-            </section>
-
-            <section id="add-event-section" class="add-event-section">
-                <h2>Додати нову подію</h2>
-                <form id="add-event-form" class="add-event-form" @submit.prevent="addEvent">
-                    <div class="form-group">
-                        <label for="event-name">Назва події:</label>
-                        <input type="text" id="event-name" v-model.trim="newEvent.name" required pattern=".{3,}"
-                            title="Щонайменше 3 символи">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="event-location">Місце проведення:</label>
-                        <input type="text" id="event-location" v-model.trim="newEvent.location" required pattern=".{2,}"
-                            title="Щонайменше 2 символи">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="event-category">Категорія:</label>
-                        <select id="event-category" v-model="newEvent.category" required>
-                            <option value="" disabled>Оберіть категорію</option>
-                            <option v-for="(label, key) in formCategories" :key="key" :value="key">
-                                {{ label }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="event-date">Дата:</label>
-                        <input type="date" id="event-date" v-model="newEvent.date" required>
-                    </div>
-
-                    <button type="submit" class="submit-btn">Додати подію</button>
-                </form>
-            </section>
-
-            <section id="events">
-                <h2>Події</h2>
-
-                <div class="api-controls">
-                    <button type="button" class="submit-btn api-btn" @click="loadApiData" :disabled="isApiLoading">
-                        Оновити події (API)
-                    </button>
-                    <span class="status-msg" :class="apiStatusClass" role="status" aria-live="polite">
-                        {{ apiStatusMessage }}
-                    </span>
-                </div>
-
-                <!-- css-анімація списку. transition-group замінює div.cards і анімує появу/зникнення/фільтрацію карток -->
-                <!-- appear: плавна поява стрічки вже при першому завантаженні; --i: порядок для поступової появи (найближчі події першими) -->
-                <transition-group name="list" tag="div" class="cards" id="events-list" appear
-                    @before-leave="lockLeavingCard">
-                    <event-card v-for="(event, index) in filteredEvents" :key="event.id" :event-id="event.id"
-                        :name="event.name" :category="event.category" :category-label="formCategories[event.category]"
-                        :date="event.date" :location="event.location" :eng-name="event.engName"
-                        :selected="event.id === selectedId" :saved="isSaved(event.id)"
-                        :style="{ '--i': staggerIndex(index) }" @select-event="handleSelectEvent"
-                        @toggle-favorite="toggleFavorite">
-                    </event-card>
-                </transition-group>
-                <p v-if="filteredEvents.length === 0" class="empty-msg">Подій за обраною категорією немає.</p>
-            </section>
-
-            <section id="saved-events" class="saved-section">
-                <h2>Обрані події</h2>
-                <p id="saved-count" class="status-msg">Збережено в {{ storageName }}: {{ savedEvents.length }}</p>
-
-                <p v-if="storageNotice" class="status-msg status-warning" role="status">{{ storageNotice }}</p>
-                <p v-if="storageError" class="status-msg status-error" role="alert">{{ storageError }}</p>
-
-                <!-- css-анімація списку обраних -->
-                <transition-group name="list" tag="div" class="cards" id="saved-list" @before-leave="lockLeavingCard">
-                    <saved-card v-for="(item, index) in sortedSavedEvents" :key="item.id" :event-id="item.id"
-                        :name="item.name" :date="item.date" :location="item.location" :selected="item.id === selectedId"
-                        :style="{ '--i': staggerIndex(index) }" @select-event="handleSelectEvent"
-                        @remove-favorite="removeFavorite">
-                    </saved-card>
-                </transition-group>
-                <p v-if="savedEvents.length === 0" class="empty-msg">
-                    Обраних подій поки немає. Натисніть «Додати в обране» на картці події.
-                </p>
-            </section>
-        </main>
-
-        <aside id="selected-event" class="details-panel" ref="details">
-            <h2>Деталі обраної події</h2>
-            <event-details v-if="selectedEvent" :name="selectedEvent.name"
-                :category-label="formCategories[selectedEvent.category]" :date="selectedEvent.date"
-                :location="selectedEvent.location" :eng-name="selectedEvent.engName">
-            </event-details>
-            <p v-else class="details-placeholder">
-                Натисніть на картку події, щоб побачити деталі.
-            </p>
-        </aside>
+        <footer>
+            <p>Контакти організаторів: info@city-events.ua</p>
+        </footer>
     </div>
-
-    <footer>
-        <p>Контакти організаторів: info@city-events.ua</p>
-    </footer>
 </body>
 
 </html>

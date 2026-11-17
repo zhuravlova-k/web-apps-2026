@@ -76,7 +76,8 @@ h3 {
     font-size: 18px;
 }
 
-.header-inner nav a:hover {
+.header-inner nav a:hover,
+.header-inner nav a.router-link-active {
     text-decoration: underline;
     color: #fff;
 }
@@ -90,10 +91,29 @@ h3 {
     gap: 16px;
 }
 
+/* SPA Контейнер */
+.page-view {
+    width: 100%;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .filters-section,
 .add-event-section,
 .saved-section,
-.details-panel {
+.details-panel,
+.not-found-section {
     background-color: #ffffff;
     padding: 1.5rem;
     border-radius: 8px;
@@ -107,6 +127,10 @@ h3 {
 
 .saved-section {
     border-top: 4px solid #f1c40f;
+}
+
+.details-panel {
+    border-top: 4px solid #023e8a;
 }
 
 .filter-controls {
@@ -170,7 +194,6 @@ select {
     width: 100%;
 }
 
-/* position: relative потрібен, щоб картка, що зникає (position: absolute), лишалася в межах сітки */
 .cards {
     position: relative;
     display: grid;
@@ -196,7 +219,6 @@ select {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-/* виділення найближчих подій (від 0 до NEAR_DAYS днів) */
 .event-card-near {
     background-color: #fffdf0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 2px rgba(241, 196, 15, 0.7);
@@ -324,7 +346,6 @@ select {
     max-width: 300px;
 }
 
-/* за вимогою варіанта 5 анімується саме ширина смуги (transition: width) */
 .progress-fill {
     height: 100%;
     width: 0%;
@@ -347,12 +368,10 @@ select {
     position: absolute;
 }
 
-/* поступова поява: кожна наступна картка стартує пізніше (--i задається в розмітці), найближчі події з'являються першими */
 .list-enter-active {
     transition-delay: calc(var(--i, 0) * 60ms);
 }
 
-/* смуга прогресу починає заповнюватися разом із появою своєї картки */
 .list-enter-active .progress-fill {
     transition-delay: calc(var(--i, 0) * 60ms);
 }
@@ -384,6 +403,8 @@ select {
     border-radius: 4px;
     font-size: 16px;
     cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .submit-btn:hover {
@@ -512,10 +533,6 @@ footer {
     .layout-wrapper {
         max-width: 1400px;
         padding: 0 40px;
-        gap: 32px;
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        align-items: start;
     }
 
     .header-inner {
@@ -534,14 +551,8 @@ footer {
     .cards {
         grid-template-columns: repeat(3, 1fr);
     }
-
-    .details-panel {
-        position: sticky;
-        top: 16px;
-    }
 }
 
-/* повага до системного налаштування "зменшити рух": переходи фактично вимикаються */
 @media (prefers-reduced-motion: reduce) {
 
     *,
