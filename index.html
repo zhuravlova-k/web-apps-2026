@@ -84,14 +84,14 @@
                     </span>
                 </div>
 
-                <!-- картки афіші: кнопка на картці додає подію в обране або прибирає її -->
-                <div class="cards" id="events-list">
+                <!-- css-анімація списку. transition-group замінює div.cards і анімує появу/зникнення/фільтрацію карток -->
+                <transition-group name="list" tag="div" class="cards" id="events-list">
                     <event-card v-for="event in filteredEvents" :key="event.id" :event-id="event.id" :name="event.name"
                         :category="event.category" :category-label="formCategories[event.category]" :date="event.date"
                         :location="event.location" :eng-name="event.engName" :selected="event.id === selectedId"
                         :saved="isSaved(event.id)" @select-event="handleSelectEvent" @toggle-favorite="toggleFavorite">
                     </event-card>
-                </div>
+                </transition-group>
                 <p v-if="filteredEvents.length === 0" class="empty-msg">Подій за обраною категорією немає.</p>
             </section>
 
@@ -99,16 +99,16 @@
                 <h2>Обрані події</h2>
                 <p id="saved-count" class="status-msg">Збережено в {{ storageName }}: {{ savedEvents.length }}</p>
 
-                <!-- повідомлення про недоступність indexeddb та помилки операцій -->
                 <p v-if="storageNotice" class="status-msg status-warning" role="status">{{ storageNotice }}</p>
                 <p v-if="storageError" class="status-msg status-error" role="alert">{{ storageError }}</p>
 
-                <div class="cards" id="saved-list">
+                <!-- css-анімація списку обраних -->
+                <transition-group name="list" tag="div" class="cards" id="saved-list">
                     <saved-card v-for="item in sortedSavedEvents" :key="item.id" :event-id="item.id" :name="item.name"
                         :date="item.date" :location="item.location" :selected="item.id === selectedId"
                         @select-event="handleSelectEvent" @remove-favorite="removeFavorite">
                     </saved-card>
-                </div>
+                </transition-group>
                 <p v-if="savedEvents.length === 0" class="empty-msg">
                     Обраних подій поки немає. Натисніть «Додати в обране» на картці події.
                 </p>
