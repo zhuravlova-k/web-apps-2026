@@ -11,6 +11,7 @@ body {
     line-height: 1.6;
     color: #1a1a1a;
     background-color: #fbf9f6;
+    overflow-y: scroll;
 }
 
 [v-cloak] {
@@ -176,6 +177,7 @@ select {
 }
 
 .event-card {
+    position: relative;
     background-color: #ffffff;
     padding: 20px;
     border-radius: 8px;
@@ -184,32 +186,44 @@ select {
     flex-direction: column;
     align-items: flex-start;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
 .event-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-/* вибрана картка */
 .event-card-selected {
     background-color: #fff6f3;
     outline: 2px solid #6a040f;
     outline-offset: 2px;
 }
 
-/* фокус з клавіатури */
 .event-card:focus-visible {
     outline: 3px solid #023e8a;
     outline-offset: 2px;
 }
 
-.event-card-music { border-left: 4px solid #023e8a; }
-.event-card-art { border-left: 4px solid #d00000; }
-.event-card-theater { border-left: 4px solid #6a040f; }
-.event-card-holiday { border-left: 4px solid #2a9d8f; }
-.event-card-saved { border-left: 4px solid #370617; }
+.event-card-music {
+    border-left: 4px solid #023e8a;
+}
+
+.event-card-art {
+    border-left: 4px solid #d00000;
+}
+
+.event-card-theater {
+    border-left: 4px solid #6a040f;
+}
+
+.event-card-holiday {
+    border-left: 4px solid #2a9d8f;
+}
+
+.event-card-saved {
+    border-left: 4px solid #370617;
+}
 
 .badge {
     display: inline-block;
@@ -221,11 +235,25 @@ select {
     margin: 0;
 }
 
-.badge-music { background-color: #023e8a; }
-.badge-art { background-color: #d00000; }
-.badge-theater { background-color: #6a040f; }
-.badge-holiday { background-color: #2a9d8f; }
-.badge-saved { background-color: #370617; }
+.badge-music {
+    background-color: #023e8a;
+}
+
+.badge-art {
+    background-color: #d00000;
+}
+
+.badge-theater {
+    background-color: #6a040f;
+}
+
+.badge-holiday {
+    background-color: #2a9d8f;
+}
+
+.badge-saved {
+    background-color: #370617;
+}
 
 .event-date {
     font-size: 18px;
@@ -242,14 +270,12 @@ select {
     margin-bottom: 10px;
 }
 
-/* місце проведення події */
 .event-location {
     font-size: 14px;
     color: #555;
     margin: 4px 0 0 0;
 }
 
-/* похідне значення: кількість днів до події */
 .days-until {
     font-size: 14px;
     font-weight: 500;
@@ -257,9 +283,53 @@ select {
     margin-bottom: 0;
 }
 
-.days-future { color: #555; }
-.days-today { color: #2a9d8f; font-weight: bold; }
-.days-past { color: #999; }
+.days-future {
+    color: #555;
+}
+
+.days-today {
+    color: #2a9d8f;
+    font-weight: bold;
+}
+
+.days-past {
+    color: #999;
+}
+
+.progress-container {
+    width: 100%;
+    height: 6px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
+}
+
+.list-enter-active,
+.list-leave-active {
+    transition: all 0.5s ease;
+}
+
+.list-enter-from,
+.list-leave-to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+}
+
+.list-leave-active {
+    position: absolute;
+}
+
+.list-move {
+    transition: transform 0.5s ease;
+}
 
 .details-title {
     margin-top: 0;
@@ -298,17 +368,39 @@ select {
     gap: 15px;
 }
 
-.submit-btn.api-btn { background-color: #023e8a; }
-.submit-btn.api-btn:hover:not(:disabled) { background-color: #012a5e; }
-.submit-btn.api-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.submit-btn.api-btn {
+    background-color: #023e8a;
+}
 
-.status-msg { font-weight: bold; }
-.status-loading { color: #023e8a; }
-.status-success { color: #1b6b60; }
-.status-warning { color: #8a4b00; }
-.status-error { color: #d00000; }
+.submit-btn.api-btn:hover:not(:disabled) {
+    background-color: #012a5e;
+}
 
-/* кнопка «додати в обране» / «видалити з обраних» на картці */
+.submit-btn.api-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.status-msg {
+    font-weight: bold;
+}
+
+.status-loading {
+    color: #023e8a;
+}
+
+.status-success {
+    color: #1b6b60;
+}
+
+.status-warning {
+    color: #8a4b00;
+}
+
+.status-error {
+    color: #d00000;
+}
+
 .favorite-btn {
     margin-top: 12px;
     padding: 6px 14px;
@@ -348,6 +440,39 @@ select {
 .favorite-btn:focus-visible {
     outline: 3px solid #023e8a;
     outline-offset: 2px;
+}
+
+.delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #ff4d4f;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background-color 0.2s;
+}
+
+.event-card:hover .delete-btn {
+    opacity: 1;
+}
+
+.delete-btn:hover {
+    background: #d9363e;
+}
+
+.delete-btn:focus-visible {
+    opacity: 1;
+    outline: 2px solid #023e8a;
 }
 
 footer {
