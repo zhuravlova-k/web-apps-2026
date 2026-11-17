@@ -15,6 +15,14 @@ const LS_KEY = 'appItems';
 const MIGRATION_FLAG_KEY = 'migrated';
 const DEFAULT_LOCATION = 'Місце не вказано';
 
+// параметри індикатора «днів до події» та анімації стрічки
+const DAY_MS = 24 * 60 * 60 * 1000;
+const NEAR_DAYS = 14;              // подія вважається найближчою, якщо до неї від 0 до 14 днів
+const SOON_DAYS = 5;               // до події залишилося зовсім мало днів (помаранчева смуга)
+const PROGRESS_WINDOW_DAYS = 30;   // вікно індикатора: усе, що далі за 30 днів, показує мінімальну смугу
+const PROGRESS_MIN_PERCENT = 5;    // мінімальна ширина смуги для майбутньої події
+const STAGGER_MAX_STEPS = 8;       // обмеження черги появи, щоб довгий список не з'являвся занадто довго
+
 class ApiError extends Error {
     constructor(message, { status, cause } = {}) {
         super(message, { cause });
@@ -37,6 +45,31 @@ const shortenText = (text, max = 60) => {
     const cut = text.slice(0, max);
     const lastSpace = cut.lastIndexOf(' ');
     return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
+};
+
+// реактивна «сьогоднішня» дата: коли настає нова доба, усі computed, що від неї залежать
+// (дні до події, ширина смуги, порядок карток), перераховуються й смуга плавно змінюється
+const clock = Vue.reactive({ today: toLocalISO(new Date()) });
+setInterval(() => {
+    const today = toLocalISO(new Date());
+    if (today !== clock.today) clock.today = today;
+}, 60 * 1000);
+
+// різниця в днях між датою події (YYYY-MM-DD) і сьогоднішнім днем; від'ємне значення - подія минула
+const daysUntilDate = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [ty, tm, td] = clock.today.split('-').map(Number);
+    return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(ty, tm - 1, td)) / DAY_MS);
+};
+
+// порядок у стрічці: спочатку майбутні події від найближчої, потім минулі (від щойно минулої)
+const compareByNearest = (a, b) => {
+    const daysA = daysUntilDate(a.date);
+    const daysB = daysUntilDate(b.date);
+    const pastA = daysA < 0;
+    const pastB = daysB < 0;
+    if (pastA !== pastB) return pastA ? 1 : -1;
+    return pastA ? daysB - daysA : daysA - daysB;
 };
 
 const INITIAL_EVENTS = [
@@ -178,9 +211,13 @@ const EventDateMixin = {
         };
     },
     mounted() {
-        setTimeout(() => {
+        // смуга спершу рендериться з шириною 0%, а за мить отримує реальну ширину - так спрацьовує CSS transition
+        this._progressTimer = setTimeout(() => {
             this.showProgress = true;
         }, 50);
+    },
+    beforeUnmount() {
+        clearTimeout(this._progressTimer);
     },
     computed: {
         eventDateUTC() {
@@ -196,9 +233,7 @@ const EventDateMixin = {
             });
         },
         daysUntil() {
-            const now = new Date();
-            const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-            return Math.round((this.eventDateUTC - todayUTC) / (24 * 60 * 60 * 1000));
+            return daysUntilDate(this.date);
         },
         daysClass() {
             if (this.daysUntil > 0) return 'days-future';
@@ -210,18 +245,23 @@ const EventDateMixin = {
             if (this.daysUntil === 0) return '🎉 Подія сьогодні!';
             return '🕒 Подія вже минула';
         },
+        isNear() {
+            return this.daysUntil >= 0 && this.daysUntil <= NEAR_DAYS;
+        },
 
+        // чим ближча подія, тим ширша смуга: від PROGRESS_MIN_PERCENT (30 днів і більше) до 100% (сьогодні)
         progressPercent() {
-            if (this.daysUntil < 0) return 100; 
-            if (this.daysUntil === 0) return 100;
-            if (this.daysUntil >= 30) return 5;
-            return Math.round(100 - (this.daysUntil / 30) * 100);
+            if (this.daysUntil <= 0) return 100;
+            if (this.daysUntil >= PROGRESS_WINDOW_DAYS) return PROGRESS_MIN_PERCENT;
+            return Math.round(
+                PROGRESS_MIN_PERCENT + (100 - PROGRESS_MIN_PERCENT) * (1 - this.daysUntil / PROGRESS_WINDOW_DAYS)
+            );
         },
         progressColor() {
             if (this.daysUntil < 0) return '#9e9e9e';
             if (this.daysUntil === 0) return '#2a9d8f';
-            if (this.daysUntil <= 5) return '#e76f51';
-            if (this.daysUntil <= 14) return '#e9c46a';
+            if (this.daysUntil <= SOON_DAYS) return '#e76f51';
+            if (this.daysUntil <= NEAR_DAYS) return '#e9c46a';
             return '#023e8a';
         },
         progressStyle() {
@@ -248,7 +288,7 @@ const EventCard = {
     emits: ['select-event', 'toggle-favorite'],
     template: `
         <article
-            :class="['event-card', 'event-card-' + category, { 'event-card-selected': selected }]"
+            :class="['event-card', 'event-card-' + category, { 'event-card-selected': selected, 'event-card-near': isNear }]"
             :data-category="category"
             tabindex="0"
             role="button"
@@ -258,13 +298,17 @@ const EventCard = {
             @keydown.space.self.prevent="select">
 
             <p :class="['badge', 'badge-' + category]">{{ categoryLabel || category }}</p>
+            <p v-if="isNear" class="near-label">🔥 Найближча подія</p>
             <h3 :title="name">{{ shortenedName }}</h3>
             <p v-if="engName" class="event-eng-name">{{ engName }}</p>
             <p class="event-date">{{ formattedDate }}</p>
             <p v-if="location" class="event-location">📍 {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
 
-            <div class="progress-container" title="Індикатор наближення події">
+            <div class="progress-container" title="Індикатор наближення події"
+                role="progressbar" aria-label="Наближення події"
+                aria-valuemin="0" aria-valuemax="100"
+                :aria-valuenow="progressPercent" :aria-valuetext="daysText">
                 <div class="progress-fill" :style="progressStyle"></div>
             </div>
 
@@ -310,7 +354,10 @@ const SavedCard = {
             <p v-if="location" class="event-location">📍 {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
 
-            <div class="progress-container" title="Індикатор наближення події">
+            <div class="progress-container" title="Індикатор наближення події"
+                role="progressbar" aria-label="Наближення події"
+                aria-valuemin="0" aria-valuemax="100"
+                :aria-valuenow="progressPercent" :aria-valuetext="daysText">
                 <div class="progress-fill" :style="progressStyle"></div>
             </div>
 
@@ -347,7 +394,10 @@ const EventDetails = {
             <p v-if="location"><strong>Місце:</strong> {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
             
-            <div class="progress-container" style="max-width: 300px;">
+            <div class="progress-container details-progress"
+                role="progressbar" aria-label="Наближення події"
+                aria-valuemin="0" aria-valuemax="100"
+                :aria-valuenow="progressPercent" :aria-valuetext="daysText">
                 <div class="progress-fill" :style="progressStyle"></div>
             </div>
         </div>
@@ -391,10 +441,11 @@ const app = Vue.createApp({
             if (this.currentFilter !== 'all') {
                 result = result.filter(e => e.category === this.currentFilter);
             }
-            return [...result].sort((a, b) => a.date.localeCompare(b.date));
+            // майбутні події від найближчої, минулі - в кінці
+            return [...result].sort(compareByNearest);
         },
         sortedSavedEvents() {
-            return [...this.savedEvents].sort((a, b) => a.date.localeCompare(b.date));
+            return [...this.savedEvents].sort(compareByNearest);
         },
         selectedEvent() {
             return this.events.find(e => e.id === this.selectedId) || this.savedEvents.find(e => e.id === this.selectedId) || null;
@@ -403,6 +454,17 @@ const app = Vue.createApp({
     },
     methods: {
         isSaved(id) { return this.savedEvents.some(e => e.id === id); },
+
+        // номер у черзі появи картки (значення --i для transition-delay у CSS)
+        staggerIndex(index) { return Math.min(index, STAGGER_MAX_STEPS); },
+
+        // перед зникненням фіксуємо координати картки, інакше position: absolute
+        // у CSS Grid перекидає її в лівий верхній кут контейнера
+        lockLeavingCard(el) {
+            el.style.top = el.offsetTop + 'px';
+            el.style.left = el.offsetLeft + 'px';
+            el.style.width = el.offsetWidth + 'px';
+        },
 
         addEvent() {
             if (this.newEvent.name.length < 3 || this.newEvent.location.length < 2) return;

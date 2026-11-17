@@ -170,7 +170,9 @@ select {
     width: 100%;
 }
 
+/* position: relative потрібен, щоб картка, що зникає (position: absolute), лишалася в межах сітки */
 .cards {
+    position: relative;
     display: grid;
     grid-template-columns: 1fr;
     gap: 16px;
@@ -192,6 +194,12 @@ select {
 .event-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* виділення найближчих подій (від 0 до NEAR_DAYS днів) */
+.event-card-near {
+    background-color: #fffdf0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 2px rgba(241, 196, 15, 0.7);
 }
 
 .event-card-selected {
@@ -255,6 +263,13 @@ select {
     background-color: #370617;
 }
 
+.near-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #9d0208;
+    margin: 6px 0 0 0;
+}
+
 .event-date {
     font-size: 18px;
     font-weight: 700;
@@ -305,6 +320,11 @@ select {
     overflow: hidden;
 }
 
+.details-progress {
+    max-width: 300px;
+}
+
+/* за вимогою варіанта 5 анімується саме ширина смуги (transition: width) */
 .progress-fill {
     height: 100%;
     width: 0%;
@@ -325,6 +345,16 @@ select {
 
 .list-leave-active {
     position: absolute;
+}
+
+/* поступова поява: кожна наступна картка стартує пізніше (--i задається в розмітці), найближчі події з'являються першими */
+.list-enter-active {
+    transition-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* смуга прогресу починає заповнюватися разом із появою своєї картки */
+.list-enter-active .progress-fill {
+    transition-delay: calc(var(--i, 0) * 60ms);
 }
 
 .list-move {
@@ -442,39 +472,6 @@ select {
     outline-offset: 2px;
 }
 
-.delete-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: #ff4d4f;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s, background-color 0.2s;
-}
-
-.event-card:hover .delete-btn {
-    opacity: 1;
-}
-
-.delete-btn:hover {
-    background: #d9363e;
-}
-
-.delete-btn:focus-visible {
-    opacity: 1;
-    outline: 2px solid #023e8a;
-}
-
 footer {
     text-align: center;
     padding: 2rem;
@@ -541,5 +538,20 @@ footer {
     .details-panel {
         position: sticky;
         top: 16px;
+    }
+}
+
+/* повага до системного налаштування "зменшити рух": переходи фактично вимикаються */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+    }
+
+    .event-card:hover {
+        transform: none;
     }
 }

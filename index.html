@@ -85,11 +85,15 @@
                 </div>
 
                 <!-- css-анімація списку. transition-group замінює div.cards і анімує появу/зникнення/фільтрацію карток -->
-                <transition-group name="list" tag="div" class="cards" id="events-list">
-                    <event-card v-for="event in filteredEvents" :key="event.id" :event-id="event.id" :name="event.name"
-                        :category="event.category" :category-label="formCategories[event.category]" :date="event.date"
-                        :location="event.location" :eng-name="event.engName" :selected="event.id === selectedId"
-                        :saved="isSaved(event.id)" @select-event="handleSelectEvent" @toggle-favorite="toggleFavorite">
+                <!-- appear: плавна поява стрічки вже при першому завантаженні; --i: порядок для поступової появи (найближчі події першими) -->
+                <transition-group name="list" tag="div" class="cards" id="events-list" appear
+                    @before-leave="lockLeavingCard">
+                    <event-card v-for="(event, index) in filteredEvents" :key="event.id" :event-id="event.id"
+                        :name="event.name" :category="event.category" :category-label="formCategories[event.category]"
+                        :date="event.date" :location="event.location" :eng-name="event.engName"
+                        :selected="event.id === selectedId" :saved="isSaved(event.id)"
+                        :style="{ '--i': staggerIndex(index) }" @select-event="handleSelectEvent"
+                        @toggle-favorite="toggleFavorite">
                     </event-card>
                 </transition-group>
                 <p v-if="filteredEvents.length === 0" class="empty-msg">Подій за обраною категорією немає.</p>
@@ -103,10 +107,11 @@
                 <p v-if="storageError" class="status-msg status-error" role="alert">{{ storageError }}</p>
 
                 <!-- css-анімація списку обраних -->
-                <transition-group name="list" tag="div" class="cards" id="saved-list">
-                    <saved-card v-for="item in sortedSavedEvents" :key="item.id" :event-id="item.id" :name="item.name"
-                        :date="item.date" :location="item.location" :selected="item.id === selectedId"
-                        @select-event="handleSelectEvent" @remove-favorite="removeFavorite">
+                <transition-group name="list" tag="div" class="cards" id="saved-list" @before-leave="lockLeavingCard">
+                    <saved-card v-for="(item, index) in sortedSavedEvents" :key="item.id" :event-id="item.id"
+                        :name="item.name" :date="item.date" :location="item.location" :selected="item.id === selectedId"
+                        :style="{ '--i': staggerIndex(index) }" @select-event="handleSelectEvent"
+                        @remove-favorite="removeFavorite">
                     </saved-card>
                 </transition-group>
                 <p v-if="savedEvents.length === 0" class="empty-msg">
