@@ -1,6 +1,5 @@
 // --- обґрунтування вибору фреймворку ---
-// обрано Vue 3 (глобальна збірка через CDN): він дає реактивність і компоненти
-// у наявному HTML без збірки й Babel (на відміну від React + JSX).
+// обрано Vue 3 (глобальна збірка через CDN).
 
 const API_YEAR = new Date().getFullYear();
 const API_COUNTRY = 'UA';
@@ -9,7 +8,6 @@ const API_URL = `https://date.nager.at/api/v3/PublicHolidays/${API_YEAR}/${API_C
 const FILTER_CATEGORIES = { all: 'Усі', music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свята' };
 const FORM_CATEGORIES = { music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свято' };
 
-// налаштування сховищ: indexeddb (основне) і localstorage (міграція та резерв)
 const DB_NAME = 'EventsDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'savedEvents';
@@ -34,7 +32,6 @@ const dateWithOffset = (offsetDays) => {
     return toLocalISO(d);
 };
 
-// скорочує довгий текст до max символів по межі слова
 const shortenText = (text, max = 60) => {
     if (text.length <= max) return text;
     const cut = text.slice(0, max);
@@ -42,7 +39,6 @@ const shortenText = (text, max = 60) => {
     return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 };
 
-// початкові події афіші (зберігаються в пам'яті, у сховище потрапляють лише через «додати в обране»)
 const INITIAL_EVENTS = [
     { id: 1, name: 'Симфонічний концерт просто неба', category: 'music', date: dateWithOffset(5), location: 'Міський парк' },
     { id: 2, name: 'Виставка сучасного мистецтва', category: 'art', date: dateWithOffset(-3), location: 'Галерея сучасного мистецтва' },
@@ -50,9 +46,6 @@ const INITIAL_EVENTS = [
     { id: 4, name: 'Хор', category: 'music', date: dateWithOffset(12), location: 'Концертний зал' }
 ];
 
-// --- модель збереженої події: id, date, name, location ---
-
-// приводить запис (зокрема зі старого формату з полем title) до моделі id, date, name, location
 function normalizeSavedEvent(raw) {
     if (!raw || !raw.date) return null;
     if (typeof raw.id !== 'number' && typeof raw.id !== 'string') return null;
@@ -68,9 +61,6 @@ function normalizeSavedEvent(raw) {
     };
 }
 
-// --- localstorage: синхронний доступ, лише рядки ---
-
-// записує масив обраних подій у localStorage через JSON.stringify
 function saveToLocalStorage(items) {
     try {
         localStorage.setItem(LS_KEY, JSON.stringify(items));
@@ -79,7 +69,6 @@ function saveToLocalStorage(items) {
     }
 }
 
-// читає масив з localStorage; пошкоджений json не ламає застосунок, а дає порожній список
 function loadFromLocalStorage() {
     try {
         const raw = localStorage.getItem(LS_KEY);
@@ -91,9 +80,6 @@ function loadFromLocalStorage() {
     }
 }
 
-// --- indexeddb : асинхронний доступ через транзакції ---
-
-// відкриває базу; onupgradeneeded створює об'єктне сховище лише при першому запуску (версія 1)
 function openDB() {
     return new Promise((resolve, reject) => {
         if (!window.indexedDB) {
@@ -111,7 +97,6 @@ function openDB() {
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            // створюємо сховище з ключем id, лише якщо його ще немає
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });
             }
@@ -122,7 +107,6 @@ function openDB() {
     });
 }
 
-// додає запис або оновлює наявний з тим самим id (put у транзакції readwrite)
 async function addItem(item) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -140,12 +124,6 @@ async function addItem(item) {
     });
 }
 
-// оновлення запису теж виконується через put, тому використовуємо addItem
-async function updateItem(item) {
-    return addItem(item);
-}
-
-// видаляє запис за ключем id (транзакція readwrite)
 async function deleteItem(id) {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -163,7 +141,6 @@ async function deleteItem(id) {
     });
 }
 
-// повертає масив усіх записів сховища (транзакція readonly)
 async function getAllItems() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
@@ -176,7 +153,6 @@ async function getAllItems() {
     });
 }
 
-// одноразова міграція (крок 8): переносимо дані з localStorage, лише якщо сховище порожнє
 async function migrateFromLocalStorage() {
     if (localStorage.getItem(MIGRATION_FLAG_KEY) === 'true') return;
 
@@ -189,15 +165,22 @@ async function migrateFromLocalStorage() {
         }
     }
 
-    // прапорець ставимо після перевірки, щоб міграція не повторювалася при наступних запусках
     localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
 }
-
-// --- компоненти ---
 
 const EventDateMixin = {
     props: {
         date: { type: String, required: true }
+    },
+    data() {
+        return {
+            showProgress: false
+        };
+    },
+    mounted() {
+        setTimeout(() => {
+            this.showProgress = true;
+        }, 50);
     },
     computed: {
         eventDateUTC() {
@@ -226,11 +209,30 @@ const EventDateMixin = {
             if (this.daysUntil > 0) return `⏳ Залишилося днів: ${this.daysUntil}`;
             if (this.daysUntil === 0) return '🎉 Подія сьогодні!';
             return '🕒 Подія вже минула';
+        },
+
+        progressPercent() {
+            if (this.daysUntil < 0) return 100; 
+            if (this.daysUntil === 0) return 100;
+            if (this.daysUntil >= 30) return 5;
+            return Math.round(100 - (this.daysUntil / 30) * 100);
+        },
+        progressColor() {
+            if (this.daysUntil < 0) return '#9e9e9e';
+            if (this.daysUntil === 0) return '#2a9d8f';
+            if (this.daysUntil <= 5) return '#e76f51';
+            if (this.daysUntil <= 14) return '#e9c46a';
+            return '#023e8a';
+        },
+        progressStyle() {
+            return {
+                width: this.showProgress ? `${this.progressPercent}%` : '0%',
+                backgroundColor: this.progressColor
+            };
         }
     }
 };
 
-// картка події в афіші з кнопкою «додати в обране» (зберегти в indexeddb / прибрати зі збережених)
 const EventCard = {
     mixins: [EventDateMixin],
     props: {
@@ -261,6 +263,11 @@ const EventCard = {
             <p class="event-date">{{ formattedDate }}</p>
             <p v-if="location" class="event-location">📍 {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
+
+            <div class="progress-container" title="Індикатор наближення події">
+                <div class="progress-fill" :style="progressStyle"></div>
+            </div>
+
             <button
                 type="button"
                 class="favorite-btn"
@@ -271,18 +278,13 @@ const EventCard = {
         </article>
     `,
     computed: {
-        shortenedName() {
-            return shortenText(this.name);
-        }
+        shortenedName() { return shortenText(this.name); }
     },
     methods: {
-        select() {
-            this.$emit('select-event', this.eventId);
-        }
+        select() { this.$emit('select-event', this.eventId); }
     }
 };
 
-// картка збереженої події (дані читаються зі сховища) з кнопкою видалення
 const SavedCard = {
     mixins: [EventDateMixin],
     props: {
@@ -307,6 +309,11 @@ const SavedCard = {
             <p class="event-date">{{ formattedDate }}</p>
             <p v-if="location" class="event-location">📍 {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
+
+            <div class="progress-container" title="Індикатор наближення події">
+                <div class="progress-fill" :style="progressStyle"></div>
+            </div>
+
             <button
                 type="button"
                 class="favorite-btn favorite-btn-remove"
@@ -316,14 +323,10 @@ const SavedCard = {
         </article>
     `,
     computed: {
-        shortenedName() {
-            return shortenText(this.name);
-        }
+        shortenedName() { return shortenText(this.name); }
     },
     methods: {
-        select() {
-            this.$emit('select-event', this.eventId);
-        }
+        select() { this.$emit('select-event', this.eventId); }
     }
 };
 
@@ -343,24 +346,17 @@ const EventDetails = {
             <p><strong>Дата:</strong> {{ formattedDate }}</p>
             <p v-if="location"><strong>Місце:</strong> {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
+            
+            <div class="progress-container" style="max-width: 300px;">
+                <div class="progress-fill" :style="progressStyle"></div>
+            </div>
         </div>
     `
 };
 
-// --- головний застосунок ---
-
 const app = Vue.createApp({
-    components: {
-        'event-card': EventCard,
-        'saved-card': SavedCard,
-        'event-details': EventDetails
-    },
-    setup() {
-        return {
-            filterCategories: FILTER_CATEGORIES,
-            formCategories: FORM_CATEGORIES
-        };
-    },
+    components: { 'event-card': EventCard, 'saved-card': SavedCard, 'event-details': EventDetails },
+    setup() { return { filterCategories: FILTER_CATEGORIES, formCategories: FORM_CATEGORIES }; },
     data() {
         return {
             events: [...INITIAL_EVENTS],
@@ -377,19 +373,16 @@ const app = Vue.createApp({
             nextId: Date.now()
         };
     },
-    // джерело списку обраних подій - indexeddb (крок 9)
     async mounted() {
         try {
             await migrateFromLocalStorage();
             this.savedEvents = await getAllItems();
-            // дзеркальна копія в localStorage: резерв на випадок недоступності indexeddb
             saveToLocalStorage(this.savedEvents);
         } catch (error) {
             console.error('Помилка роботи з IndexedDB:', error);
-            // крок 11: зрозуміле повідомлення і резервний режим на localStorage
             this.useLocalFallback = true;
             this.savedEvents = loadFromLocalStorage();
-            this.storageNotice = 'Не вдалося отримати доступ до IndexedDB (можливо, у браузері увімкнено приватний режим). Обрані події зберігаються в localStorage.';
+            this.storageNotice = 'Не вдалося отримати доступ до IndexedDB. Обрані події зберігаються в localStorage.';
         }
     },
     computed: {
@@ -404,20 +397,13 @@ const app = Vue.createApp({
             return [...this.savedEvents].sort((a, b) => a.date.localeCompare(b.date));
         },
         selectedEvent() {
-            return this.events.find(e => e.id === this.selectedId)
-                || this.savedEvents.find(e => e.id === this.selectedId)
-                || null;
+            return this.events.find(e => e.id === this.selectedId) || this.savedEvents.find(e => e.id === this.selectedId) || null;
         },
-        storageName() {
-            return this.useLocalFallback ? 'localStorage' : 'IndexedDB';
-        }
+        storageName() { return this.useLocalFallback ? 'localStorage' : 'IndexedDB'; }
     },
     methods: {
-        isSaved(id) {
-            return this.savedEvents.some(e => e.id === id);
-        },
+        isSaved(id) { return this.savedEvents.some(e => e.id === id); },
 
-        // додає подію з форми до афіші (у пам'яті); у сховище вона потрапляє через «додати в обране»
         addEvent() {
             if (this.newEvent.name.length < 3 || this.newEvent.location.length < 2) return;
 
@@ -429,36 +415,20 @@ const app = Vue.createApp({
                 date: this.newEvent.date
             });
 
-            this.newEvent.name = '';
-            this.newEvent.location = '';
-            this.newEvent.category = '';
-            this.newEvent.date = '';
+            this.newEvent.name = ''; this.newEvent.location = ''; this.newEvent.category = ''; this.newEvent.date = '';
         },
 
-        toggleFavorite(id) {
-            return this.isSaved(id) ? this.removeFavorite(id) : this.addFavorite(id);
-        },
+        toggleFavorite(id) { return this.isSaved(id) ? this.removeFavorite(id) : this.addFavorite(id); },
 
-        // запис події в сховище (create) і повторне читання списку зі сховища
         async addFavorite(id) {
             const source = this.events.find(e => e.id === id);
             if (!source || this.isSaved(id)) return;
 
-            // у сховище потрапляють лише поля варіанта: id, date, name, location
-            const record = {
-                id: source.id,
-                date: source.date,
-                name: source.name,
-                location: source.location
-            };
+            const record = { id: source.id, date: source.date, name: source.name, location: source.location };
 
             try {
-                if (this.useLocalFallback) {
-                    this.savedEvents = [...this.savedEvents, record];
-                } else {
-                    await addItem(record);
-                    this.savedEvents = await getAllItems();
-                }
+                if (this.useLocalFallback) { this.savedEvents = [...this.savedEvents, record]; } 
+                else { await addItem(record); this.savedEvents = await getAllItems(); }
                 saveToLocalStorage(this.savedEvents);
                 this.storageError = '';
             } catch (error) {
@@ -467,22 +437,14 @@ const app = Vue.createApp({
             }
         },
 
-        // видалення події зі збережених (delete) і повторне читання списку зі сховища
         async removeFavorite(id) {
             try {
-                if (this.useLocalFallback) {
-                    this.savedEvents = this.savedEvents.filter(e => e.id !== id);
-                } else {
-                    await deleteItem(id);
-                    this.savedEvents = await getAllItems();
-                }
+                if (this.useLocalFallback) { this.savedEvents = this.savedEvents.filter(e => e.id !== id); } 
+                else { await deleteItem(id); this.savedEvents = await getAllItems(); }
                 saveToLocalStorage(this.savedEvents);
                 this.storageError = '';
 
-                // знімаємо вибір, якщо подія більше ніде не відображається
-                if (this.selectedId === id && !this.events.some(e => e.id === id)) {
-                    this.selectedId = null;
-                }
+                if (this.selectedId === id && !this.events.some(e => e.id === id)) this.selectedId = null;
             } catch (error) {
                 console.error('Помилка видалення події:', error);
                 this.storageError = 'Не вдалося видалити подію з обраного. Спробуйте ще раз.';
@@ -491,50 +453,26 @@ const app = Vue.createApp({
 
         handleSelectEvent(id) {
             this.selectedId = id;
-
             if (window.matchMedia('(max-width: 1023px)').matches) {
-                this.$nextTick(() => {
-                    this.$refs.details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                });
+                this.$nextTick(() => { this.$refs.details.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
             }
         },
 
         async loadApiData() {
-            this.apiStatusMessage = 'Завантаження...';
-            this.apiStatusClass = 'status-loading';
-            this.isApiLoading = true;
-
+            this.apiStatusMessage = 'Завантаження...'; this.apiStatusClass = 'status-loading'; this.isApiLoading = true;
             try {
                 let response;
-                try {
-                    response = await fetch(API_URL);
-                } catch (networkError) {
-                    throw new ApiError('Помилка з\'єднання. Перевірте інтернет.', { cause: networkError });
-                }
-
+                try { response = await fetch(API_URL); } catch (networkError) { throw new ApiError('Помилка з\'єднання. Перевірте інтернет.', { cause: networkError }); }
                 if (!response.ok) {
-                    const message = response.status === 404
-                        ? 'Дані про події не знайдено'
-                        : 'Не вдалося завантажити дані з сервера.';
+                    const message = response.status === 404 ? 'Дані про події не знайдено' : 'Не вдалося завантажити дані з сервера.';
                     throw new ApiError(message, { status: response.status });
                 }
 
                 let data;
-                try {
-                    data = await response.json();
-                } catch (parseError) {
-                    throw new ApiError('Сервер повернув некоректну відповідь.', {
-                        status: response.status,
-                        cause: parseError
-                    });
-                }
+                try { data = await response.json(); } catch (parseError) { throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status, cause: parseError }); }
 
-                if (!Array.isArray(data)) {
-                    throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
-                }
-                if (data.length === 0) {
-                    throw new ApiError('Дані про події не знайдено', { status: response.status });
-                }
+                if (!Array.isArray(data)) throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
+                if (data.length === 0) throw new ApiError('Дані про події не знайдено', { status: response.status });
 
                 const apiEvents = data.map((holiday, index) => ({
                     id: 'api-' + index + '-' + holiday.date,
@@ -546,21 +484,14 @@ const app = Vue.createApp({
                     isApi: true
                 }));
 
-                // події з api потрапляють в афішу (пам'ять); у indexeddb їх записує лише кнопка «додати в обране»
                 this.events = [...this.events.filter(e => !e.isApi), ...apiEvents];
-
                 this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
                 this.apiStatusClass = 'status-success';
-
             } catch (error) {
                 console.error(`Помилка завантаження API (статус: ${error.status ?? 'немає'}):`, error);
                 this.apiStatusClass = 'status-error';
-                this.apiStatusMessage = error instanceof ApiError
-                    ? error.message
-                    : 'Сталася помилка при обробці даних.';
-            } finally {
-                this.isApiLoading = false;
-            }
+                this.apiStatusMessage = error instanceof ApiError ? error.message : 'Сталася помилка при обробці даних.';
+            } finally { this.isApiLoading = false; }
         }
     }
 });
