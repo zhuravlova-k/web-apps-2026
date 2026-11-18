@@ -15,6 +15,7 @@ body {
 }
 
 [v-cloak] { display: none !important; }
+main:focus { outline: none; }
 img { max-width: 100%; height: auto; }
 h1 { font-size: 32px; margin: 0; }
 h2 { font-size: 24px; margin-top: 0; color: #370617; }
@@ -55,6 +56,8 @@ h3 { font-size: 20px; margin-top: 12px; margin-bottom: 8px; color: #03071e; }
 .filters-section { border-top: 4px solid #6a040f; }
 .saved-section { border-top: 4px solid #f1c40f; }
 .details-panel { border-top: 4px solid #023e8a; }
+.not-found-section { text-align: center; }
+.not-found-section .submit-btn { margin-top: 16px; }
 
 .filter-controls { display: flex; flex-direction: column; gap: 12px; }
 .filter-label { font-weight: 600; }
@@ -66,27 +69,27 @@ h3 { font-size: 20px; margin-top: 12px; margin-bottom: 8px; color: #03071e; }
 .filter-btn.active { background-color: #6a040f; color: #ffffff; }
 .filter-btn:focus-visible { outline: 3px solid #023e8a; outline-offset: 2px; }
 
-#events-count { margin-top: 15px; font-weight: bold; color: #6a040f; }
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; margin-bottom: 4px; font-weight: 600; }
 input[type="text"], input[type="date"], select {
     padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; width: 100%;
 }
 
-.cards {
-    position: relative; display: grid; grid-template-columns: 1fr; gap: 16px;
-}
+.cards { position: relative; display: grid; grid-template-columns: 1fr; gap: 16px; }
 
-/* Картка тепер <a>, прибираємо стандартні стилі посилань */
 .event-card {
     position: relative; background-color: #ffffff; padding: 20px; border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); display: flex; flex-direction: column; align-items: flex-start;
-    cursor: pointer; text-decoration: none; color: inherit;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 .event-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12); }
 .event-card-near { background-color: #fffdf0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 0 0 2px rgba(241, 196, 15, 0.7); }
-.event-card:focus-visible { outline: 3px solid #023e8a; outline-offset: 2px; }
+
+/* посилання в заголовку розтягується на всю картку, а кнопка лежить поверх нього */
+.card-link { color: inherit; text-decoration: none; }
+.card-link::after { content: ''; position: absolute; inset: 0; border-radius: 8px; }
+.card-link:focus-visible { outline: none; }
+.card-link:focus-visible::after { outline: 3px solid #023e8a; outline-offset: 2px; }
 
 .event-card-music { border-left: 4px solid #023e8a; }
 .event-card-art { border-left: 4px solid #d00000; }
@@ -123,7 +126,6 @@ input[type="text"], input[type="date"], select {
 .list-move { transition: transform 0.5s ease; }
 
 .details-title { margin-top: 0; color: #6a040f; }
-.details-placeholder { color: #666; font-style: italic; }
 .empty-msg { color: #666; font-style: italic; }
 
 .submit-btn {
@@ -131,6 +133,7 @@ input[type="text"], input[type="date"], select {
     font-size: 16px; cursor: pointer; text-decoration: none; display: inline-block;
 }
 .submit-btn:hover { background-color: #6a040f; }
+.back-link { margin-bottom: 20px; }
 .api-controls { margin-bottom: 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 15px; }
 .submit-btn.api-btn { background-color: #023e8a; }
 .submit-btn.api-btn:hover:not(:disabled) { background-color: #012a5e; }
@@ -139,17 +142,17 @@ input[type="text"], input[type="date"], select {
 .status-msg { font-weight: bold; }
 .status-loading { color: #023e8a; }
 .status-success { color: #1b6b60; }
-.status-warning { color: #8a4b00; }
 .status-error { color: #d00000; }
 
 .favorite-btn {
+    position: relative; z-index: 1;
     margin-top: 12px; padding: 6px 14px; font-size: 14px; font-weight: 600; color: #370617;
     background-color: #ffffff; border: 2px solid #6a040f; border-radius: 16px; cursor: pointer; transition: background-color 0.2s, color 0.2s;
 }
 .favorite-btn:hover { background-color: #fbe9e7; }
 .favorite-btn-active { background-color: #6a040f; color: #ffffff; }
 .favorite-btn-active:hover { background-color: #370617; }
-.favorite-btn-remove { border-color: #d00000; color: #d00000; }
+.favorite-btn-remove { border-color: #d00000; color: #d00000; background-color: #ffffff; }
 .favorite-btn-remove:hover { background-color: #d00000; color: #ffffff; }
 .favorite-btn:focus-visible { outline: 3px solid #023e8a; outline-offset: 2px; }
 
