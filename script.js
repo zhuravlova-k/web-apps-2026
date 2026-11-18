@@ -1,6 +1,3 @@
-// --- обґрунтування вибору фреймворку ---
-// обрано Vue 3 (глобальна збірка через CDN).
-
 const API_YEAR = new Date().getFullYear();
 const API_COUNTRY = 'UA';
 const API_URL = `https://date.nager.at/api/v3/PublicHolidays/${API_YEAR}/${API_COUNTRY}`;
@@ -32,9 +29,7 @@ class ApiError extends Error {
 
 const toLocalISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const dateWithOffset = (offsetDays) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    return toLocalISO(d);
+    const d = new Date(); d.setDate(d.getDate() + offsetDays); return toLocalISO(d);
 };
 
 const shortenText = (text, max = 60) => {
@@ -77,26 +72,18 @@ function normalizeSavedEvent(raw) {
     if (typeof raw.id !== 'number' && typeof raw.id !== 'string') return null;
     const name = raw.name ?? raw.title;
     if (!name) return null;
-    return {
-        id: raw.id,
-        date: String(raw.date),
-        name: String(name),
-        location: raw.location ? String(raw.location) : DEFAULT_LOCATION
-    };
+    return { id: raw.id, date: String(raw.date), name: String(name), category: raw.category || 'holiday', engName: raw.engName || '', location: raw.location ? String(raw.location) : DEFAULT_LOCATION };
 }
 
 function saveToLocalStorage(items) {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch (e) { console.error(e); }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch (e) { }
 }
-
 function loadFromLocalStorage() {
     try {
         const raw = localStorage.getItem(LS_KEY);
         const parsed = raw ? JSON.parse(raw) : [];
         return Array.isArray(parsed) ? parsed.map(normalizeSavedEvent).filter(Boolean) : [];
-    } catch (error) {
-        return [];
-    }
+    } catch (error) { return []; }
 }
 
 function openDB() {
@@ -157,19 +144,15 @@ async function migrateFromLocalStorage() {
     localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
 }
 
-const EventDateMixin = {
+// міксин для спільної логіки дат, прогресу і черги анімації
+const EventBaseMixin = {
     props: { date: { type: String, required: true } },
     data() { return { showProgress: false }; },
     mounted() { this._progressTimer = setTimeout(() => { this.showProgress = true; }, 50); },
     beforeUnmount() { clearTimeout(this._progressTimer); },
     computed: {
-        eventDateUTC() {
-            const [y, m, d] = this.date.split('-').map(Number);
-            return Date.UTC(y, m - 1, d);
-        },
-        formattedDate() {
-            return new Date(this.eventDateUTC).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
-        },
+        eventDateUTC() { const [y, m, d] = this.date.split('-').map(Number); return Date.UTC(y, m - 1, d); },
+        formattedDate() { return new Date(this.eventDateUTC).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); },
         daysUntil() { return daysUntilDate(this.date); },
         daysClass() {
             if (this.daysUntil > 0) return 'days-future';
@@ -194,68 +177,59 @@ const EventDateMixin = {
             if (this.daysUntil <= NEAR_DAYS) return '#e9c46a';
             return '#023e8a';
         },
-        progressStyle() {
-            return { width: this.showProgress ? `${this.progressPercent}%` : '0%', backgroundColor: this.progressColor };
-        }
+        progressStyle() { return { width: this.showProgress ? `${this.progressPercent}%` : '0%', backgroundColor: this.progressColor }; }
+    },
+    methods: {
+        staggerIndex(index) { return Math.min(index, STAGGER_MAX_STEPS); },
+        lockLeavingCard(el) { el.style.top = el.offsetTop + 'px'; el.style.left = el.offsetLeft + 'px'; el.style.width = el.offsetWidth + 'px'; }
     }
 };
 
-// клієнтська маршрутизація, перехоплення кліку через data-link
-const EventCard = {
-    mixins: [EventDateMixin],
-    props: { eventId: { type: [Number, String], required: true }, name: { type: String, required: true }, category: { type: String, required: true }, categoryLabel: String, location: { type: String, default: '' }, engName: String, saved: { type: Boolean, default: false } },
-    emits: ['toggle-favorite'],
+// універсальний компонент картки (замінює окремі EventCard та SavedCard), використовує <a>
+const BaseEventCard = {
+    mixins: [EventBaseMixin],
+    props: {
+        eventId: { type: [Number, String], required: true },
+        name: { type: String, required: true },
+        category: { type: String, default: '' },
+        categoryLabel: { type: String, default: '' },
+        location: { type: String, default: '' },
+        engName: { type: String, default: '' },
+        saved: { type: Boolean, default: false },
+        isSavedView: { type: Boolean, default: false } // визначає, чи ми на сторінці обраного
+    },
+    emits: ['action-btn'],
     template: `
-        <article
-            :class="['event-card', 'event-card-' + category, { 'event-card-near': isNear }]"
-            :data-category="category" tabindex="0" role="button" data-link
-            @click.prevent="navigate" @keydown.enter.self.prevent="navigate" @keydown.space.self.prevent="navigate">
+        <a :href="'#/events/' + eventId" data-link
+           :class="['event-card', isSavedView ? 'event-card-saved' : 'event-card-' + category, { 'event-card-near': !isSavedView && isNear }]">
             
-            <p :class="['badge', 'badge-' + category]">{{ categoryLabel || category }}</p>
-            <p v-if="isNear" class="near-label">🔥 Найближча подія</p>
+            <p :class="['badge', isSavedView ? 'badge-saved' : 'badge-' + category]">
+                {{ isSavedView ? '★ Обране' : (categoryLabel || category) }}
+            </p>
+            <p v-if="!isSavedView && isNear" class="near-label">🔥 Найближча подія</p>
+            
             <h3 :title="name">{{ shortenedName }}</h3>
             <p v-if="engName" class="event-eng-name">{{ engName }}</p>
             <p class="event-date">{{ formattedDate }}</p>
             <p v-if="location" class="event-location">📍 {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
 
-            <div class="progress-container"><div class="progress-fill" :style="progressStyle"></div></div>
+            <div class="progress-container" title="Індикатор наближення події" role="progressbar" aria-label="Наближення події" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progressPercent" :aria-valuetext="daysText">
+                <div class="progress-fill" :style="progressStyle"></div>
+            </div>
 
-            <button type="button" class="favorite-btn" :class="{ 'favorite-btn-active': saved }" @click.stop="$emit('toggle-favorite', eventId)">
-                {{ saved ? '★ Прибрати з обраного' : '☆ Додати в обране' }}
+            <!-- кнопка всередині <a> викликається з .prevent, щоб не відбувався перехід -->
+            <button type="button" class="favorite-btn" :class="{ 'favorite-btn-active': saved, 'favorite-btn-remove': isSavedView }" 
+                @click.stop.prevent="$emit('action-btn', eventId)">
+                {{ isSavedView ? 'Видалити з обраних' : (saved ? '★ Прибрати з обраного' : '☆ Додати в обране') }}
             </button>
-        </article>
+        </a>
     `,
-    computed: { shortenedName() { return shortenText(this.name); } },
-    methods: { navigate() { window.location.hash = '/events/' + this.eventId; } }
-};
-
-const SavedCard = {
-    mixins: [EventDateMixin],
-    props: { eventId: { type: [Number, String], required: true }, name: { type: String, required: true }, location: { type: String, default: '' } },
-    emits: ['remove-favorite'],
-    template: `
-        <article
-            class="event-card event-card-saved" tabindex="0" role="button" data-link
-            @click.prevent="navigate" @keydown.enter.self.prevent="navigate" @keydown.space.self.prevent="navigate">
-            
-            <p class="badge badge-saved">★ Обране</p>
-            <h3 :title="name">{{ shortenedName }}</h3>
-            <p class="event-date">{{ formattedDate }}</p>
-            <p v-if="location" class="event-location">📍 {{ location }}</p>
-            <p class="days-until" :class="daysClass">{{ daysText }}</p>
-
-            <div class="progress-container"><div class="progress-fill" :style="progressStyle"></div></div>
-
-            <button type="button" class="favorite-btn favorite-btn-remove" @click.stop="$emit('remove-favorite', eventId)">Видалити з обраних</button>
-        </article>
-    `,
-    computed: { shortenedName() { return shortenText(this.name); } },
-    methods: { navigate() { window.location.hash = '/events/' + this.eventId; } }
+    computed: { shortenedName() { return shortenText(this.name); } }
 };
 
 const EventDetails = {
-    mixins: [EventDateMixin],
+    mixins: [EventBaseMixin],
     props: { name: { type: String, required: true }, categoryLabel: String, location: { type: String, default: '' }, engName: String },
     template: `
         <div class="details-body">
@@ -265,20 +239,21 @@ const EventDetails = {
             <p><strong>Дата:</strong> {{ formattedDate }}</p>
             <p v-if="location"><strong>Місце:</strong> {{ location }}</p>
             <p class="days-until" :class="daysClass">{{ daysText }}</p>
-            <div class="progress-container details-progress"><div class="progress-fill" :style="progressStyle"></div></div>
+            <div class="progress-container details-progress" role="progressbar" aria-label="Наближення події" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progressPercent" :aria-valuetext="daysText">
+                <div class="progress-fill" :style="progressStyle"></div>
+            </div>
         </div>
     `
 };
 
+// вимикаємо inheritAttrs, щоб props кореня не падали в DOM <section>
 const HomeView = {
-    components: { 'event-card': EventCard },
+    inheritAttrs: false,
+    components: { 'base-event-card': BaseEventCard },
     props: ['events', 'savedEvents', 'formCategories', 'filterCategories', 'apiStatusMessage', 'apiStatusClass', 'isApiLoading'],
     emits: ['add-event', 'toggle-favorite', 'load-api-data'],
     data() {
-        return {
-            currentFilter: 'all',
-            newEvent: { name: '', location: '', category: '', date: '' }
-        };
+        return { currentFilter: 'all', newEvent: { name: '', location: '', category: '', date: '' } };
     },
     computed: {
         filteredEvents() {
@@ -293,12 +268,6 @@ const HomeView = {
             if (this.newEvent.name.length < 3 || this.newEvent.location.length < 2) return;
             this.$emit('add-event', { ...this.newEvent });
             this.newEvent.name = ''; this.newEvent.location = ''; this.newEvent.category = ''; this.newEvent.date = '';
-        },
-        staggerIndex(index) { return Math.min(index, STAGGER_MAX_STEPS); },
-        lockLeavingCard(el) {
-            el.style.top = el.offsetTop + 'px';
-            el.style.left = el.offsetLeft + 'px';
-            el.style.width = el.offsetWidth + 'px';
         }
     },
     template: `
@@ -313,7 +282,6 @@ const HomeView = {
                     </button>
                 </div>
             </section>
-
             <section id="add-event-section" class="add-event-section">
                 <h2>Додати нову подію</h2>
                 <form id="add-event-form" class="add-event-form" @submit.prevent="submitForm">
@@ -330,19 +298,18 @@ const HomeView = {
                     <button type="submit" class="submit-btn">Додати подію</button>
                 </form>
             </section>
-
             <section id="events">
                 <h2>Події</h2>
                 <div class="api-controls">
                     <button type="button" class="submit-btn api-btn" @click="$emit('load-api-data')" :disabled="isApiLoading">Оновити події (API)</button>
                     <span class="status-msg" :class="apiStatusClass">{{ apiStatusMessage }}</span>
                 </div>
-                <transition-group name="list" tag="div" class="cards" appear @before-leave="lockLeavingCard">
-                    <event-card v-for="(event, index) in filteredEvents" :key="event.id" :event-id="event.id"
+                <transition-group name="list" tag="div" class="cards" appear @before-leave="EventBaseMixin.methods.lockLeavingCard">
+                    <base-event-card v-for="(event, index) in filteredEvents" :key="event.id" :event-id="event.id"
                         :name="event.name" :category="event.category" :category-label="formCategories[event.category]"
                         :date="event.date" :location="event.location" :eng-name="event.engName" :saved="isSaved(event.id)"
-                        :style="{ '--i': staggerIndex(index) }" @toggle-favorite="$emit('toggle-favorite', event.id)">
-                    </event-card>
+                        :style="{ '--i': EventBaseMixin.methods.staggerIndex(index) }" @action-btn="$emit('toggle-favorite', event.id)">
+                    </base-event-card>
                 </transition-group>
                 <p v-if="filteredEvents.length === 0" class="empty-msg">Подій за обраною категорією немає.</p>
             </section>
@@ -351,25 +318,20 @@ const HomeView = {
 };
 
 const SavedView = {
-    components: { 'saved-card': SavedCard },
+    inheritAttrs: false,
+    components: { 'base-event-card': BaseEventCard },
     props: ['savedEvents'],
     emits: ['remove-favorite'],
-    computed: {
-        sortedSavedEvents() { return [...this.savedEvents].sort(compareByNearest); }
-    },
-    methods: {
-        staggerIndex(index) { return Math.min(index, STAGGER_MAX_STEPS); },
-        lockLeavingCard(el) { el.style.top = el.offsetTop + 'px'; el.style.left = el.offsetLeft + 'px'; el.style.width = el.offsetWidth + 'px'; }
-    },
+    computed: { sortedSavedEvents() { return [...this.savedEvents].sort(compareByNearest); } },
     template: `
         <section class="saved-section">
             <h2>Обрані події</h2>
             <p class="status-msg">Збережено: {{ savedEvents.length }}</p>
-            <transition-group name="list" tag="div" class="cards" appear @before-leave="lockLeavingCard">
-                <saved-card v-for="(item, index) in sortedSavedEvents" :key="item.id" :event-id="item.id"
-                    :name="item.name" :date="item.date" :location="item.location"
-                    :style="{ '--i': staggerIndex(index) }" @remove-favorite="$emit('remove-favorite', item.id)">
-                </saved-card>
+            <transition-group name="list" tag="div" class="cards" appear @before-leave="EventBaseMixin.methods.lockLeavingCard">
+                <base-event-card v-for="(item, index) in sortedSavedEvents" :key="item.id" :event-id="item.id"
+                    :name="item.name" :date="item.date" :location="item.location" :is-saved-view="true"
+                    :style="{ '--i': EventBaseMixin.methods.staggerIndex(index) }" @action-btn="$emit('remove-favorite', item.id)">
+                </base-event-card>
             </transition-group>
             <p v-if="savedEvents.length === 0" class="empty-msg">Обраних подій поки немає. Натисніть «Додати в обране» на картці події.</p>
         </section>
@@ -377,17 +339,24 @@ const SavedView = {
 };
 
 const DetailView = {
+    inheritAttrs: false,
     components: { 'event-details': EventDetails },
     props: ['events', 'savedEvents', 'routeParams', 'formCategories'],
     computed: {
-        // знаходимо запис за id без мережевого запиту
         event() {
             const id = this.routeParams.id;
             return this.events.find(e => String(e.id) === String(id)) || this.savedEvents.find(e => String(e.id) === String(id)) || null;
         }
     },
     methods: {
-        goBack() { window.history.length > 1 ? window.history.back() : window.location.hash = '/'; }
+        goBack() {
+            // виправлено: безпечне повернення
+            if (window.history.length > 2 && document.referrer.includes(window.location.host)) {
+                window.history.back();
+            } else {
+                window.location.hash = '/';
+            }
+        }
     },
     template: `
         <section class="details-panel">
@@ -395,49 +364,43 @@ const DetailView = {
             <event-details v-if="event" :name="event.name" :category-label="formCategories[event.category]" 
                 :date="event.date" :location="event.location" :eng-name="event.engName">
             </event-details>
-            <div v-else class="empty-msg status-error" style="margin-top: 15px;">Подію не знайдено. Можливо, вона була видалена.</div>
+            <div v-else class="empty-msg status-error" style="margin-top: 15px;">Подію не знайдено. Вона не збережена в пам'яті.</div>
         </section>
     `
 };
 
 const NotFoundView = {
+    inheritAttrs: false,
     template: `
         <section class="not-found-section" style="text-align: center;">
             <h2>404 - Сторінку не знайдено</h2>
             <p class="empty-msg">На жаль, за цією адресою нічого немає.</p>
             <br>
-            <a href="#/" class="submit-btn">Повернутися на головну</a>
+            <a href="#/" data-link class="submit-btn">Повернутися на головну</a>
         </section>
     `
 };
 
-// масив маршрутів
 const routes = [
     { path: '/', view: 'HomeView' },
     { path: '/saved', view: 'SavedView' },
     { path: '/events/:id', view: 'DetailView' }
 ];
 
-// зіставлення поточного шляху з патерном та вилучення параметрів
 function matchRoute(path) {
     const pathParts = path.split('/').filter(Boolean);
     for (const route of routes) {
         const routeParts = route.path.split('/').filter(Boolean);
         if (routeParts.length !== pathParts.length) continue;
-
         const params = {};
         const isMatch = routeParts.every((part, i) => {
-            if (part.startsWith(':')) {
-                params[part.slice(1)] = pathParts[i];
-                return true;
-            }
+            if (part.startsWith(':')) { params[part.slice(1)] = pathParts[i]; return true; }
             return part === pathParts[i];
         });
         if (isMatch) return { view: route.view, params };
     }
-    return null; // маршрут не знайдено
+    return null;
 }
-
 
 const app = Vue.createApp({
     components: { HomeView, SavedView, DetailView, NotFoundView },
@@ -451,14 +414,29 @@ const app = Vue.createApp({
             apiStatusClass: '',
             isApiLoading: false,
             nextId: Date.now(),
-            
-            // стан роутера
-            currentRoute: '/',
+
+            // визначаємо початковий маршрут синхронно
+            currentRoute: window.location.hash.slice(1) || '/',
             routeParams: {},
-            currentViewComponent: 'HomeView'
+            currentViewComponent: ''
         };
     },
+    // ініціалізація роутера відбувається синхронно ДО async mounted
+    created() {
+        this.handleRouting();
+    },
     async mounted() {
+        // глобальний перехоплювач кліків для data-link
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest('a[data-link]');
+            if (!link) return;
+            event.preventDefault();
+            window.location.hash = link.getAttribute('href');
+        });
+
+        // підписка на hashchange
+        window.addEventListener('hashchange', this.handleRouting);
+
         try {
             await migrateFromLocalStorage();
             this.savedEvents = await getAllItems();
@@ -466,19 +444,19 @@ const app = Vue.createApp({
         } catch (error) {
             this.useLocalFallback = true;
             this.savedEvents = loadFromLocalStorage();
-            console.error(error);
         }
-        
-        // підписуємось на подію зміни хеша для навігації
-        window.addEventListener('hashchange', this.handleRouting);
-        this.handleRouting();
+
+        // Авто-завантаження API (вимоги рев'ю) з прапорцем
+        if (!sessionStorage.getItem('apiLoaded')) {
+            await this.loadApiData();
+            sessionStorage.setItem('apiLoaded', 'true');
+        }
     },
     methods: {
         handleRouting() {
             const path = window.location.hash.slice(1) || '/';
             this.currentRoute = path;
             const match = matchRoute(path);
-            
             if (match) {
                 this.currentViewComponent = match.view;
                 this.routeParams = match.params;
@@ -486,59 +464,46 @@ const app = Vue.createApp({
                 this.currentViewComponent = 'NotFoundView';
                 this.routeParams = {};
             }
-        },
-        
-        addEvent(newEventData) {
-            this.events.push({ id: this.nextId++, ...newEventData });
+            window.scrollTo(0, 0); // скидання скролу
         },
 
-        toggleFavorite(id) {
-            const isSaved = this.savedEvents.some(e => e.id === id);
-            return isSaved ? this.removeFavorite(id) : this.addFavorite(id);
-        },
+        addEvent(newEventData) { this.events.push({ id: this.nextId++, ...newEventData }); },
+        toggleFavorite(id) { const isSaved = this.savedEvents.some(e => e.id === id); return isSaved ? this.removeFavorite(id) : this.addFavorite(id); },
 
         async addFavorite(id) {
             const source = this.events.find(e => e.id === id);
             if (!source) return;
-            const record = { id: source.id, date: source.date, name: source.name, location: source.location };
-
+            const record = { id: source.id, date: source.date, name: source.name, category: source.category, engName: source.engName, location: source.location };
             try {
-                if (this.useLocalFallback) { this.savedEvents = [...this.savedEvents, record]; } 
+                if (this.useLocalFallback) { this.savedEvents = [...this.savedEvents, record]; }
                 else { await addItem(record); this.savedEvents = await getAllItems(); }
                 saveToLocalStorage(this.savedEvents);
-            } catch (error) { console.error('Помилка збереження події:', error); }
+            } catch (error) { console.error(error); }
         },
 
         async removeFavorite(id) {
             try {
-                if (this.useLocalFallback) { this.savedEvents = this.savedEvents.filter(e => e.id !== id); } 
+                if (this.useLocalFallback) { this.savedEvents = this.savedEvents.filter(e => e.id !== id); }
                 else { await deleteItem(id); this.savedEvents = await getAllItems(); }
                 saveToLocalStorage(this.savedEvents);
-            } catch (error) { console.error('Помилка видалення події:', error); }
+            } catch (error) { console.error(error); }
         },
 
         async loadApiData() {
             this.apiStatusMessage = 'Завантаження...'; this.apiStatusClass = 'status-loading'; this.isApiLoading = true;
             try {
                 let response = await fetch(API_URL);
-                if (!response.ok) throw new ApiError('Не вдалося завантажити дані з сервера.', { status: response.status });
+                if (!response.ok) throw new ApiError('', { status: response.status });
                 let data = await response.json();
-                
-                const apiEvents = data.map((holiday, index) => ({
-                    id: 'api-' + index + '-' + holiday.date,
-                    name: holiday.localName,
-                    engName: holiday.name,
-                    category: 'holiday',
-                    location: 'Україна',
-                    date: holiday.date,
-                    isApi: true
+
+                const apiEvents = data.map((h, i) => ({
+                    id: 'api-' + i + '-' + h.date, name: h.localName, engName: h.name, category: 'holiday', location: 'Україна', date: h.date, isApi: true
                 }));
                 this.events = [...this.events.filter(e => !e.isApi), ...apiEvents];
                 this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
                 this.apiStatusClass = 'status-success';
             } catch (error) {
-                this.apiStatusClass = 'status-error';
-                this.apiStatusMessage = 'Помилка при завантаженні API.';
+                this.apiStatusClass = 'status-error'; this.apiStatusMessage = 'Помилка при завантаженні API.';
             } finally { this.isApiLoading = false; }
         }
     }

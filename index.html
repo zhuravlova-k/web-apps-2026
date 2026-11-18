@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Афіша подій міста</title>
     <link rel="stylesheet" href="css/style.css">
-
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- фіксуємо версію vue -->
+    <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.js"></script>
     <script src="script.js" defer></script>
 </head>
 
@@ -17,22 +17,27 @@
             <div class="header-inner">
                 <h1>Афіша подій міста</h1>
                 <nav>
-                    <!-- лаб 13: hash-based роутинг у меню -->
-                    <a href="#/" :class="{ 'router-link-active': currentRoute === '/' }">Події</a>
-                    <a href="#/saved" :class="{ 'router-link-active': currentRoute === '/saved' }">Обрані</a>
+                    <!-- hash-based роутинг через делегування data-link -->
+                    <a href="#/" data-link :class="{ 'router-link-active': currentRoute === '/' }"
+                        :aria-current="currentRoute === '/' ? 'page' : null">Події</a>
+                    <a href="#/saved" data-link :class="{ 'router-link-active': currentRoute === '/saved' }"
+                        :aria-current="currentRoute === '/saved' ? 'page' : null">Обрані</a>
                 </nav>
             </div>
         </header>
 
         <div class="layout-wrapper">
             <main>
-                <!-- лаб 13: динамічний контейнер для рендеру поточної "сторінки" -->
-                <component :is="currentViewComponent" class="page-view" :events="events" :saved-events="savedEvents"
-                    :form-categories="formCategories" :filter-categories="filterCategories"
-                    :api-status-message="apiStatusMessage" :api-status-class="apiStatusClass"
-                    :is-api-loading="isApiLoading" :route-params="routeParams" @add-event="addEvent"
-                    @toggle-favorite="toggleFavorite" @remove-favorite="removeFavorite" @load-api-data="loadApiData">
-                </component>
+                <!-- keep-alive зберігає стан (фільтри, введення у форму) при зміні роутів -->
+                <KeepAlive>
+                    <component :is="currentViewComponent" class="page-view" :events="events" :saved-events="savedEvents"
+                        :form-categories="formCategories" :filter-categories="filterCategories"
+                        :api-status-message="apiStatusMessage" :api-status-class="apiStatusClass"
+                        :is-api-loading="isApiLoading" :route-params="routeParams" @add-event="addEvent"
+                        @toggle-favorite="toggleFavorite" @remove-favorite="removeFavorite"
+                        @load-api-data="loadApiData">
+                    </component>
+                </KeepAlive>
             </main>
         </div>
 
