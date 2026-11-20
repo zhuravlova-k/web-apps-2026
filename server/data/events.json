@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "name": "Симфонічний концерт просто неба",
+    "category": "music",
+    "date": "2026-11-24",
+    "location": "Міський парк"
+  },
+  {
+    "id": 2,
+    "name": "Виставка сучасного мистецтва",
+    "category": "art",
+    "date": "2026-11-15",
+    "location": "Галерея сучасного мистецтва"
+  },
+  {
+    "id": 3,
+    "name": "Театральна вистава \"Тіні\"",
+    "category": "theater",
+    "date": "2026-11-20",
+    "location": "Міський драматичний театр"
+  },
+  {
+    "id": 4,
+    "name": "Хор",
+    "category": "music",
+    "date": "2026-12-01",
+    "location": "Концертний зал"
+  },
+  {
+    "id": 5,
+    "name": "Фотовиставка \"Вечірній Київ\"",
+    "category": "art",
+    "date": "2026-11-28",
+    "location": "Мистецький арсенал"
+  },
+  {
+    "id": 6,
+    "name": "День Святого Миколая",
+    "engName": "Saint Nicholas Day",
+    "category": "holiday",
+    "date": "2026-12-06",
+    "location": "Україна"
+  },
+  {
+    "id": 7,
+    "name": "Джазовий вечір у філармонії",
+    "category": "music",
+    "date": "2026-12-10",
+    "location": "Національна філармонія"
+  },
+  {
+    "id": 8,
+    "name": "Різдво Христове",
+    "engName": "Christmas Day",
+    "category": "holiday",
+    "date": "2026-12-25",
+    "location": "Україна"
+  },
+  {
+    "id": 9,
+    "name": "Новий Рік",
+    "engName": "New Year's Day",
+    "category": "holiday",
+    "date": "2027-01-01",
+    "location": "Україна"
+  }
+]
