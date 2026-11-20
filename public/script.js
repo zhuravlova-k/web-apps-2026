@@ -1,9 +1,7 @@
-// обрано vue 3 (глобальна збірка через cdn): компоненти й реактивність зручні для view-сторінок,
-// а сам роутер (routes, matchRoute, hashchange) написаний вручну без vue-router
+// обрано vue 3 (глобальна збірка через cdn); власний hash-роутер (практикум 13)
+// клієнтський fetch перемкнуто на локальний Node.js/Express-сервер (/api/events)
 
-const API_YEAR = new Date().getFullYear();
-const API_COUNTRY = 'UA';
-const API_URL = `https://date.nager.at/api/v3/PublicHolidays/${API_YEAR}/${API_COUNTRY}`;
+const API_URL = '/api/events';
 
 const FILTER_CATEGORIES = { all: 'Усі', music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свята' };
 const FORM_CATEGORIES = { music: 'Музика', art: 'Мистецтво', theater: 'Театр', holiday: 'Свято' };
@@ -31,11 +29,6 @@ class ApiError extends Error {
 }
 
 const toLocalISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const dateWithOffset = (offsetDays) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    return toLocalISO(d);
-};
 
 const shortenText = (text, max = 60) => {
     if (text.length <= max) return text;
@@ -64,13 +57,6 @@ const compareByNearest = (a, b) => {
     if (pastA !== pastB) return pastA ? 1 : -1;
     return pastA ? daysB - daysA : daysA - daysB;
 };
-
-const INITIAL_EVENTS = [
-    { id: 1, name: 'Симфонічний концерт просто неба', category: 'music', date: dateWithOffset(5), location: 'Міський парк' },
-    { id: 2, name: 'Виставка сучасного мистецтва', category: 'art', date: dateWithOffset(-3), location: 'Галерея сучасного мистецтва' },
-    { id: 3, name: 'Театральна вистава "Тіні"', category: 'theater', date: dateWithOffset(0), location: 'Міський драматичний театр' },
-    { id: 4, name: 'Хор', category: 'music', date: dateWithOffset(12), location: 'Концертний зал' }
-];
 
 function normalizeSavedEvent(raw) {
     if (!raw || !raw.date) return null;
@@ -204,7 +190,7 @@ const EventDateMixin = {
     }
 };
 
-// методи анімації списку для view зі списками карток (у шаблони доступні лише методи компонента)
+// методи анімації списку для view зі списками карток
 const ListAnimationMixin = {
     methods: {
         staggerIndex(index) { return Math.min(index, STAGGER_MAX_STEPS); },
@@ -279,7 +265,7 @@ const EventDetails = {
     `
 };
 
-// view-компоненти (сторінки spa); inheritAttrs: false, щоб зайві props кореня не потрапляли в dom як атрибути
+// view-компоненти (сторінки spa)
 const HomeView = {
     inheritAttrs: false,
     mixins: [ListAnimationMixin],
@@ -300,7 +286,7 @@ const HomeView = {
         }
     },
     methods: {
-        isSaved(id) { return this.savedEvents.some(e => e.id === id); },
+        isSaved(id) { return this.savedEvents.some(e => String(e.id) === String(id)); },
         submitForm() {
             if (this.newEvent.name.length < 3 || this.newEvent.location.length < 2) return;
             this.$emit('add-event', { ...this.newEvent });
@@ -385,13 +371,78 @@ const DetailView = {
     inheritAttrs: false,
     components: { 'event-details': EventDetails },
     props: ['events', 'savedEvents', 'routeParams', 'formCategories', 'backTarget', 'isLoading'],
+    data() {
+        return {
+            remoteEvent: null,
+            remoteError: '',
+            isRemoteLoading: false
+        };
+    },
     computed: {
-        // запис шукається за id серед уже наявних даних, без мережевого запиту
-        event() {
-            const id = String(this.routeParams.id);
-            return this.events.find(e => String(e.id) === id)
-                || this.savedEvents.find(e => String(e.id) === id)
+        // спершу шукаємо запис серед уже наявних даних без повторного мережевого запиту
+        cachedEvent() {
+            const id = this.routeParams.id;
+            if (!id) return null;
+            return this.events.find(e => String(e.id) === String(id))
+                || this.savedEvents.find(e => String(e.id) === String(id))
                 || null;
+        },
+        event() {
+            return this.cachedEvent || this.remoteEvent;
+        }
+    },
+    watch: {
+        'routeParams.id': {
+            immediate: true,
+            handler() {
+                this.remoteEvent = null;
+                this.remoteError = '';
+                this.fetchIfMissing();
+            }
+        },
+        isLoading(loading) {
+            if (!loading) this.fetchIfMissing();
+        }
+    },
+    methods: {
+        // якщо події немає в кеші (наприклад, прямий перехід на /events/999), запитуємо локальний GET /api/events/:id
+        async fetchIfMissing() {
+            const id = this.routeParams.id;
+            if (!id || this.isLoading || this.cachedEvent) return;
+
+            const reqSeq = (this._reqSeq = (this._reqSeq || 0) + 1);
+            this.isRemoteLoading = true;
+            this.remoteError = '';
+
+            try {
+                let response;
+                try {
+                    response = await fetch(`${API_URL}/${encodeURIComponent(id)}`);
+                } catch (networkError) {
+                    throw new ApiError('Помилка з\'єднання із сервером.', { cause: networkError });
+                }
+
+                if (!response.ok) {
+                    let serverMessage = 'Не вдалося завантажити подію з сервера.';
+                    try {
+                        const errBody = await response.json();
+                        if (errBody && errBody.error) serverMessage = errBody.error;
+                    } catch (_) { /* відповідь не містить JSON */ }
+                    throw new ApiError(serverMessage, { status: response.status });
+                }
+
+                const data = await response.json();
+                if (this._reqSeq !== reqSeq) return;
+                this.remoteEvent = data;
+            } catch (error) {
+                if (this._reqSeq !== reqSeq) return;
+                console.error(`Помилка завантаження події (статус: ${error.status ?? 'немає'}):`, error);
+                this.remoteError = error instanceof ApiError
+                    ? (error.status ? `${error.message} (HTTP ${error.status}).` : error.message)
+                    : 'Сталася помилка при отриманні деталей події.';
+            } finally {
+                if (this._reqSeq === reqSeq) this.isRemoteLoading = false;
+            }
         }
     },
     template: `
@@ -401,8 +452,8 @@ const DetailView = {
                 :category-label="formCategories[event.category]" :date="event.date"
                 :location="event.location" :eng-name="event.engName">
             </event-details>
-            <p v-else-if="isLoading" class="status-msg status-loading">Завантаження даних...</p>
-            <p v-else class="empty-msg status-error">Подію не знайдено. Спробуйте оновити події на головній сторінці.</p>
+            <p v-else-if="isLoading || isRemoteLoading" class="status-msg status-loading">Завантаження даних...</p>
+            <p v-else class="empty-msg status-error">{{ remoteError || 'Подію не знайдено.' }}</p>
         </section>
     `
 };
@@ -456,7 +507,7 @@ const app = Vue.createApp({
     setup() { return { filterCategories: FILTER_CATEGORIES, formCategories: FORM_CATEGORIES }; },
     data() {
         return {
-            events: [...INITIAL_EVENTS],
+            events: [],
             savedEvents: [],
             useLocalFallback: false,
             isStorageReady: false,
@@ -473,17 +524,13 @@ const app = Vue.createApp({
     },
     computed: {
         isDataLoading() { return this.isApiLoading || !this.isStorageReady; },
-        // кнопка "Повернутися" веде на список, з якого відкрили деталі, або на головну
         backTarget() { return ['/', '/saved'].includes(this.previousRoute) ? this.previousRoute : '/'; },
-        // на сторінці деталей підсвічуємо розділ, з якого прийшли
         activeNav() { return this.currentViewComponent === 'DetailView' ? this.backTarget : this.currentRoute; }
     },
-    // маршрут визначається синхронно до першого рендеру, щоб не було блимання чужої сторінки
     created() {
         this.applyRoute(getPath());
     },
     async mounted() {
-        // делегування кліків по a[data-link]; клік із модифікаторами лишаємо браузеру (нова вкладка)
         document.addEventListener('click', (event) => {
             if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             const link = event.target.closest('a[data-link]');
@@ -493,7 +540,7 @@ const app = Vue.createApp({
         });
         window.addEventListener('hashchange', this.handleRouting);
 
-        // події з api живуть у пам'яті, тому завантажуємо їх при кожному старті, паралельно з читанням сховища
+        // завантажуємо локальний список подій із власного Node.js-сервера паралельно з читанням IndexedDB
         this.loadApiData();
 
         try {
@@ -533,12 +580,12 @@ const app = Vue.createApp({
         },
 
         toggleFavorite(id) {
-            const isSaved = this.savedEvents.some(e => e.id === id);
+            const isSaved = this.savedEvents.some(e => String(e.id) === String(id));
             return isSaved ? this.removeFavorite(id) : this.addFavorite(id);
         },
 
         async addFavorite(id) {
-            const source = this.events.find(e => e.id === id);
+            const source = this.events.find(e => String(e.id) === String(id));
             if (!source) return;
             const record = {
                 id: source.id,
@@ -558,7 +605,7 @@ const app = Vue.createApp({
 
         async removeFavorite(id) {
             try {
-                if (this.useLocalFallback) { this.savedEvents = this.savedEvents.filter(e => e.id !== id); }
+                if (this.useLocalFallback) { this.savedEvents = this.savedEvents.filter(e => String(e.id) !== String(id)); }
                 else { await deleteItem(id); this.savedEvents = await getAllItems(); }
                 saveToLocalStorage(this.savedEvents);
             } catch (error) { console.error('Помилка видалення події:', error); }
@@ -569,28 +616,54 @@ const app = Vue.createApp({
             this.apiStatusClass = 'status-loading';
             this.isApiLoading = true;
             try {
-                const response = await fetch(API_URL);
-                if (!response.ok) throw new ApiError('Не вдалося завантажити дані з сервера.', { status: response.status });
-                const data = await response.json();
+                let response;
+                try {
+                    response = await fetch(API_URL);
+                } catch (networkError) {
+                    throw new ApiError('Помилка з\'єднання із сервером.', { cause: networkError });
+                }
 
-                const apiEvents = data.map((holiday, index) => ({
-                    id: 'api-' + index + '-' + holiday.date,
-                    name: holiday.localName,
-                    engName: holiday.name,
-                    category: 'holiday',
-                    location: 'Україна',
-                    date: holiday.date,
+                if (!response.ok) {
+                    let serverMessage = response.status === 404
+                        ? 'Дані про події не знайдено.'
+                        : 'Не вдалося завантажити дані з сервера.';
+                    try {
+                        const errBody = await response.json();
+                        if (errBody && errBody.error) serverMessage = errBody.error;
+                    } catch (_) { /* відповідь не містить JSON */ }
+                    throw new ApiError(serverMessage, { status: response.status });
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status, cause: parseError });
+                }
+
+                if (!Array.isArray(data)) {
+                    throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
+                }
+
+                const apiEvents = data.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    engName: item.engName || '',
+                    category: item.category,
+                    location: item.location || DEFAULT_LOCATION,
+                    date: item.date,
                     isApi: true
                 }));
+
                 this.events = [...this.events.filter(e => !e.isApi), ...apiEvents];
-                this.apiStatusMessage = `Успішно завантажено свят: ${apiEvents.length}`;
+                this.apiStatusMessage = `Успішно завантажено подій: ${apiEvents.length}`;
                 this.apiStatusClass = 'status-success';
             } catch (error) {
-                console.error(error);
+                console.error(`Помилка завантаження API (статус: ${error.status ?? 'немає'}):`, error);
                 this.apiStatusClass = 'status-error';
                 this.apiStatusMessage = error instanceof ApiError
-                    ? `Помилка сервера (${error.status}).`
-                    : 'Помилка при завантаженні API.';
+                    ? (error.status ? `${error.message} (${error.status})` : error.message)
+                    : 'Сталася помилка при обробці даних.';
             } finally {
                 this.isApiLoading = false;
             }
