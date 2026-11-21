@@ -8,6 +8,17 @@ const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
 
+// приховуємо заголовок X-Powered-By: Express
+app.disable('x-powered-by');
+
+// базові HTTP-заголовки безпеки (практикум 15)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    next();
+});
+
 // завантажуємо локальний набір подій із JSON-файлу
 const events = JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf-8'));
 
