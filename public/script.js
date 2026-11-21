@@ -1,5 +1,6 @@
 // обрано vue 3 (глобальна збірка через cdn); власний hash-роутер (практикум 13)
-// клієнтський fetch перемкнуто на локальний Node.js/Express-сервер (/api/events)
+// безпека (практикум 15): рендер тексту лише через інтерполяцію Vue (textContent, без innerHTML/v-html),
+// сувора валідація даних із API та форми, зберігання savedEvents у localStorage лише в fallback-режимі
 
 const API_URL = '/api/events';
 
@@ -19,6 +20,8 @@ const SOON_DAYS = 5;
 const PROGRESS_WINDOW_DAYS = 30;
 const PROGRESS_MIN_PERCENT = 5;
 const STAGGER_MAX_STEPS = 8;
+const MAX_TEXT_LENGTH = 150;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 class ApiError extends Error {
     constructor(message, { status, cause } = {}) {
@@ -36,6 +39,41 @@ const shortenText = (text, max = 60) => {
     const lastSpace = cut.lastIndexOf(' ');
     return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 };
+
+// перевірка формату YYYY-MM-DD і реальності календарної дати
+function isValidISODate(value) {
+    if (typeof value !== 'string' || !ISO_DATE_RE.test(value)) return false;
+    const [y, m, d] = value.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+const sanitizeText = (value, maxLength = MAX_TEXT_LENGTH) =>
+    typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+
+// валідація й нормалізація події з API або локального сховища (захист від пошкоджених чи зайвих полів)
+function normalizeEvent(raw, { requireCategory = false, isApi = false } = {}) {
+    if (!raw || typeof raw !== 'object') return null;
+    const validId = typeof raw.id === 'number' || (typeof raw.id === 'string' && raw.id.trim().length > 0);
+    if (!validId) return null;
+
+    const name = sanitizeText(raw.name ?? raw.title);
+    if (!name || !isValidISODate(raw.date)) return null;
+
+    const hasValidCategory = Object.hasOwn(FORM_CATEGORIES, raw.category);
+    if (requireCategory && !hasValidCategory) return null;
+
+    const normalized = {
+        id: raw.id,
+        name,
+        category: hasValidCategory ? raw.category : '',
+        date: raw.date,
+        location: sanitizeText(raw.location) || DEFAULT_LOCATION,
+        engName: sanitizeText(raw.engName)
+    };
+    if (isApi) normalized.isApi = true;
+    return normalized;
+}
 
 const clock = Vue.reactive({ today: toLocalISO(new Date()) });
 setInterval(() => {
@@ -58,30 +96,19 @@ const compareByNearest = (a, b) => {
     return pastA ? daysB - daysA : daysA - daysB;
 };
 
-function normalizeSavedEvent(raw) {
-    if (!raw || !raw.date) return null;
-    if (typeof raw.id !== 'number' && typeof raw.id !== 'string') return null;
-    const name = raw.name ?? raw.title;
-    if (!name) return null;
-    return {
-        id: raw.id,
-        date: String(raw.date),
-        name: String(name),
-        category: Object.hasOwn(FORM_CATEGORIES, raw.category) ? raw.category : '',
-        engName: raw.engName ? String(raw.engName) : '',
-        location: raw.location ? String(raw.location) : DEFAULT_LOCATION
-    };
-}
-
 function saveToLocalStorage(items) {
     try { localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch (error) { console.error(error); }
+}
+
+function clearLocalStorageItems() {
+    try { localStorage.removeItem(LS_KEY); } catch (error) { console.error(error); }
 }
 
 function loadFromLocalStorage() {
     try {
         const raw = localStorage.getItem(LS_KEY);
         const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed.map(normalizeSavedEvent).filter(Boolean) : [];
+        return Array.isArray(parsed) ? parsed.map(item => normalizeEvent(item)).filter(Boolean) : [];
     } catch (error) {
         console.error(error);
         return [];
@@ -143,6 +170,8 @@ async function migrateFromLocalStorage() {
     if (existingItems.length === 0 && oldItems.length > 0) {
         for (const oldItem of oldItems) await addItem(oldItem);
     }
+    // після перенесення в IndexedDB очищуємо дубль із localStorage
+    clearLocalStorageItems();
     localStorage.setItem(MIGRATION_FLAG_KEY, 'true');
 }
 
@@ -224,7 +253,7 @@ const BaseEventCard = {
             <p v-if="!isSavedView && isNear" class="near-label">🔥 Найближча подія</p>
 
             <h3>
-                <a :href="'#/events/' + eventId" data-link class="card-link" :title="name">{{ shortenedName }}</a>
+                <a :href="detailsHref" data-link class="card-link" :title="name">{{ shortenedName }}</a>
             </h3>
             <p v-if="engName" class="event-eng-name">{{ engName }}</p>
             <p class="event-date">{{ formattedDate }}</p>
@@ -243,7 +272,10 @@ const BaseEventCard = {
             </button>
         </article>
     `,
-    computed: { shortenedName() { return shortenText(this.name); } }
+    computed: {
+        shortenedName() { return shortenText(this.name); },
+        detailsHref() { return `#/events/${encodeURIComponent(String(this.eventId))}`; }
+    }
 };
 
 const EventDetails = {
@@ -289,6 +321,7 @@ const HomeView = {
         isSaved(id) { return this.savedEvents.some(e => String(e.id) === String(id)); },
         submitForm() {
             if (this.newEvent.name.length < 3 || this.newEvent.location.length < 2) return;
+            if (!Object.hasOwn(FORM_CATEGORIES, this.newEvent.category) || !isValidISODate(this.newEvent.date)) return;
             this.$emit('add-event', { ...this.newEvent });
             this.newEvent.name = ''; this.newEvent.location = ''; this.newEvent.category = ''; this.newEvent.date = '';
         }
@@ -309,8 +342,8 @@ const HomeView = {
             <section id="add-event-section" class="add-event-section">
                 <h2>Додати нову подію</h2>
                 <form id="add-event-form" class="add-event-form" @submit.prevent="submitForm">
-                    <div class="form-group"><label>Назва події:</label><input type="text" v-model.trim="newEvent.name" required pattern=".{3,}"></div>
-                    <div class="form-group"><label>Місце проведення:</label><input type="text" v-model.trim="newEvent.location" required pattern=".{2,}"></div>
+                    <div class="form-group"><label>Назва події:</label><input type="text" v-model.trim="newEvent.name" required pattern=".{3,}" maxlength="150"></div>
+                    <div class="form-group"><label>Місце проведення:</label><input type="text" v-model.trim="newEvent.location" required pattern=".{2,}" maxlength="150"></div>
                     <div class="form-group">
                         <label>Категорія:</label>
                         <select v-model="newEvent.category" required>
@@ -379,7 +412,6 @@ const DetailView = {
         };
     },
     computed: {
-        // спершу шукаємо запис серед уже наявних даних без повторного мережевого запиту
         cachedEvent() {
             const id = this.routeParams.id;
             if (!id) return null;
@@ -405,7 +437,6 @@ const DetailView = {
         }
     },
     methods: {
-        // якщо події немає в кеші (наприклад, прямий перехід на /events/999), запитуємо локальний GET /api/events/:id
         async fetchIfMissing() {
             const id = this.routeParams.id;
             if (!id || this.isLoading || this.cachedEvent) return;
@@ -426,14 +457,18 @@ const DetailView = {
                     let serverMessage = 'Не вдалося завантажити подію з сервера.';
                     try {
                         const errBody = await response.json();
-                        if (errBody && errBody.error) serverMessage = errBody.error;
-                    } catch (_) { /* відповідь не містить JSON */ }
+                        if (errBody && typeof errBody.error === 'string') serverMessage = errBody.error;
+                    } catch { /* відповідь не містить JSON */ }
                     throw new ApiError(serverMessage, { status: response.status });
                 }
 
-                const data = await response.json();
+                const rawData = await response.json();
+                const normalized = normalizeEvent(rawData, { requireCategory: true, isApi: true });
+                if (!normalized) {
+                    throw new ApiError('Сервер повернув некоректні дані події.', { status: response.status });
+                }
                 if (this._reqSeq !== reqSeq) return;
-                this.remoteEvent = data;
+                this.remoteEvent = normalized;
             } catch (error) {
                 if (this._reqSeq !== reqSeq) return;
                 console.error(`Помилка завантаження події (статус: ${error.status ?? 'немає'}):`, error);
@@ -484,13 +519,20 @@ function matchRoute(path) {
         if (routeParts.length !== pathParts.length) continue;
 
         const params = {};
+        let decodeFailed = false;
         const isMatch = routeParts.every((part, i) => {
             if (part.startsWith(':')) {
-                params[part.slice(1)] = pathParts[i];
-                return true;
+                try {
+                    params[part.slice(1)] = decodeURIComponent(pathParts[i]);
+                    return true;
+                } catch {
+                    decodeFailed = true;
+                    return false;
+                }
             }
             return part === pathParts[i];
         });
+        if (decodeFailed) return null;
         if (isMatch) return { view: route.view, params };
     }
     return null;
@@ -498,7 +540,6 @@ function matchRoute(path) {
 
 const getPath = () => window.location.hash.slice(1) || '/';
 
-// скрол відновлюємо вручну для кожного маршруту, щоб браузер не конфліктував з перемальовуванням
 const scrollPositions = {};
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
@@ -540,13 +581,14 @@ const app = Vue.createApp({
         });
         window.addEventListener('hashchange', this.handleRouting);
 
-        // завантажуємо локальний список подій із власного Node.js-сервера паралельно з читанням IndexedDB
         this.loadApiData();
 
         try {
             await migrateFromLocalStorage();
-            this.savedEvents = await getAllItems();
-            saveToLocalStorage(this.savedEvents);
+            const stored = await getAllItems();
+            this.savedEvents = stored.map(item => normalizeEvent(item)).filter(Boolean);
+            // коли IndexedDB доступна, не дублюємо дані в localStorage
+            clearLocalStorageItems();
         } catch (error) {
             this.useLocalFallback = true;
             this.savedEvents = loadFromLocalStorage();
@@ -576,7 +618,9 @@ const app = Vue.createApp({
         },
 
         addEvent(newEventData) {
-            this.events.push({ id: this.nextId++, ...newEventData });
+            const event = normalizeEvent({ id: this.nextId++, ...newEventData }, { requireCategory: true });
+            if (!event) return;
+            this.events.push(event);
         },
 
         toggleFavorite(id) {
@@ -587,27 +631,32 @@ const app = Vue.createApp({
         async addFavorite(id) {
             const source = this.events.find(e => String(e.id) === String(id));
             if (!source) return;
-            const record = {
-                id: source.id,
-                date: source.date,
-                name: source.name,
-                category: source.category,
-                engName: source.engName || '',
-                location: source.location
-            };
+            // зберігаємо лише мінімально необхідні публічні поля події
+            const record = normalizeEvent(source);
+            if (!record) return;
 
             try {
-                if (this.useLocalFallback) { this.savedEvents = [...this.savedEvents, record]; }
-                else { await addItem(record); this.savedEvents = await getAllItems(); }
-                saveToLocalStorage(this.savedEvents);
+                if (this.useLocalFallback) {
+                    this.savedEvents = [...this.savedEvents, record];
+                    saveToLocalStorage(this.savedEvents);
+                } else {
+                    await addItem(record);
+                    const stored = await getAllItems();
+                    this.savedEvents = stored.map(item => normalizeEvent(item)).filter(Boolean);
+                }
             } catch (error) { console.error('Помилка збереження події:', error); }
         },
 
         async removeFavorite(id) {
             try {
-                if (this.useLocalFallback) { this.savedEvents = this.savedEvents.filter(e => String(e.id) !== String(id)); }
-                else { await deleteItem(id); this.savedEvents = await getAllItems(); }
-                saveToLocalStorage(this.savedEvents);
+                if (this.useLocalFallback) {
+                    this.savedEvents = this.savedEvents.filter(e => String(e.id) !== String(id));
+                    saveToLocalStorage(this.savedEvents);
+                } else {
+                    await deleteItem(id);
+                    const stored = await getAllItems();
+                    this.savedEvents = stored.map(item => normalizeEvent(item)).filter(Boolean);
+                }
             } catch (error) { console.error('Помилка видалення події:', error); }
         },
 
@@ -629,8 +678,8 @@ const app = Vue.createApp({
                         : 'Не вдалося завантажити дані з сервера.';
                     try {
                         const errBody = await response.json();
-                        if (errBody && errBody.error) serverMessage = errBody.error;
-                    } catch (_) { /* відповідь не містить JSON */ }
+                        if (errBody && typeof errBody.error === 'string') serverMessage = errBody.error;
+                    } catch { /* відповідь не містить JSON */ }
                     throw new ApiError(serverMessage, { status: response.status });
                 }
 
@@ -645,15 +694,9 @@ const app = Vue.createApp({
                     throw new ApiError('Сервер повернув некоректну відповідь.', { status: response.status });
                 }
 
-                const apiEvents = data.map((item) => ({
-                    id: item.id,
-                    name: item.name,
-                    engName: item.engName || '',
-                    category: item.category,
-                    location: item.location || DEFAULT_LOCATION,
-                    date: item.date,
-                    isApi: true
-                }));
+                const apiEvents = data
+                    .map(item => normalizeEvent(item, { requireCategory: true, isApi: true }))
+                    .filter(Boolean);
 
                 this.events = [...this.events.filter(e => !e.isApi), ...apiEvents];
                 this.apiStatusMessage = `Успішно завантажено подій: ${apiEvents.length}`;
